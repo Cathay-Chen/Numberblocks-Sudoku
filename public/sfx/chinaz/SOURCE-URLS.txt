@@ -1,0 +1,14 @@
+来源页面: https://sc.chinaz.com/tag_yinxiao/chenggong.html
+下载时间: 2026-02-06
+原始文件:
+- success-upgrade.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202501/xm3431.mp3
+- fail-disappointed.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202306/y1855.mp3
+- win-reward.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202204/y808.mp3
+- success-system.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202106/14430.mp3
+- success-level.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202505/xm3690.mp3
+- win-clear.mp3: https://downsc.chinaz.net/Files/DownLoad/sound1/202204/y811.mp3
+项目使用(裁剪后):
+- /sfx/chinaz-correct.wav
+- /sfx/chinaz-wrong.wav
+- /sfx/chinaz-win.wav
+- success-from-user-link.wav: https://downsc.chinaz.net/Files/DownLoad/sound1/202106/14430.wav (from https://sc.chinaz.com/yinxiao/210622059011.htm)
