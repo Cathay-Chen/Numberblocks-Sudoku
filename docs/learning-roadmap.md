@@ -172,3 +172,55 @@ PR 1 当时仍打开、未合并、没有 CI 检查。这一轮继续在同一�
 - 用测试证明往返、刷新恢复、模式隔离、坏档不覆盖、旧档迁移。界面再在手机、平板、桌面各走一次刷新。
 
 这刀做完再看经典提示：按当前盘解释下一步，并重新决定 3 次错误是否还要结束本局。趣味性仍然只做设计评估，不写成儿童实测。
+
+上面「下一刀只做续玩」是合并前的判断。2026-11-07 下午的竞品操作之后，这个顺序作废，改成下面的排序。续玩仍然没做，但不再把它当成已经排定的下一件工作。
+
+## 2026-11-07 竞品与自己的提示阶梯
+
+### 实际打开过的产品
+
+1. [inSudoku Easy](https://insudoku.com/)：免注册。点过 Coach。干净棋盘上第一步是 “HIDDEN SINGLE (BOX) 1/4”，写 “Find a place for 4”，标出宫，按钮是 “Show why”，没有直接填格。再按一次变成 “2/4”：“Column 2 already contains 4. So 4 cannot go in these 3 cells.” 并在剩下的那格圈出 4，按钮变成 “Next”。另一次把同一列放进两个 6，Coach 不讲下一步，只说 “Check your entries / Some entries do not fit this puzzle”，两格被标成不同颜色。按 Undo 后，第 1 行第 1 列的无障碍标签回到 empty。第 3、4 步没点到。完成一局没有做。
+2. [Sudoku Exchange 难度 1.2 的一题](https://sudokuexchange.com/play)：免注册。灯泡提示先显示 “Loading hints / Hints by: Sukaku Explainer”，然后弹出 “Hidden Single: R3C4: 1 in block”，句子是 “The cell R3C4 is the only possible position of the value 1 in the block.” 格子里用浅绿色标出 1。旁边有 “Apply Hint” 和 “OK”，解释和落子是分开的。没有成功点进空格制造错误，也没有用成撤销，没有下完。作者在 [公开 issue](https://github.com/grantm/sudoku-web-app/issues/34) 里写过：提示来自 Sukaku Explainer，先解出步骤表，再对照当前盘找用户还没做的一步。这是作者自己的说明。我没有读它的求解源码，也没有用实验证明「会跳过已经填对的步骤」。
+3. [sudoku.coach Very Easy](https://sudoku.coach/en/play)：页面打开了，Very Easy 棋盘和 1–9 能看见，但饼干设置挡住了操作。没有走完求解器的一步。机制以下面的官方说明为准，不把我没点过的步骤说成体验。
+4. [Sudoku.com Easy](https://sudoku.com/)：看见了 Easy 棋盘、错误 0/3、计时、笔记和灯泡图标，旁边有广告。没有点中格子，也没有点到灯泡。它的提示怎么讲，这次是未知。
+
+### 官方文字，不是我逐步点出来的
+
+[sudoku.coach 对计算机求解器的说明](https://sudoku.coach/beapi/get-page/en/learn/computer-solver)：求解器按技巧的难和常用程度排队，每按一次只展示当前最容易的一种。它从一开始就写满候选，作者写明这是为了一致，不是因为人会这么做。难度按人要用的技巧，而不是空格数。我没有在求解器里逐格核对。
+
+### 已知、推断、未知
+
+- 已知（我看见的界面）：inSudoku 先查不合规则的重复，再分步讲；Exchange 把技巧名、格子、宫和理由写出来，落子要再按 Apply Hint。
+- 推断：inSudoku 的 “do not fit” 在我造出的同一列两个 6 上会触发。没试过「不重复、但不是最终数字」时它会不会也判错，所以不能说它只查可见规则。
+- 未知：Sudoku.com 灯泡的内部步骤；sudoku.coach 求解器实际点下去的高亮；两家的存档我都没有关页再打开验证。Exchange 首页和 inSudoku 页面写了会记住进度，这只是他们的说明。
+
+### 成人功能怎么取舍
+
+不拿来用：技巧英文名、开局写满候选、计时、三次错误就结束、直接公布答案、广告、把提示一键填进格子。4–8 岁低识字时，这些要么在认字，要么在惩罚试错。
+
+转译进我们自己的阶梯，不照抄界面：有重复先看重复；否则先看一组，再讲已经有谁，最后才说出空位上的朋友。孩子自己放。只教两种方法：一组只剩一个空位，以及某个朋友在一组里只剩一个座位。不展示 9 个小铅笔标记。
+
+关卡名字和原来的菜单都不是这套逻辑的骨架。
+
+### 这一轮落地
+
+`src/kid-adventure/coach.ts` 按当前盘生成阶梯。看一步第一次不报数字，第二次讲原因，第三次才说空位是谁，并且不改格子。重复时没有「换这个数」的第三步。旧星星键没有改。
+
+### 重排后的优先级
+
+1. 已做：儿童盘的分步提示。正式题仍是唯一解，提示不读答案。
+2. 下一刀：把同一套「先查错、再分步、不偷读答案」用到经典 9×9，换掉现在直接填答案的提示。三次错误结束先不动儿童盘；经典是否保留，等这一刀一起决定。
+3. 再下一刀才是半盘续玩。缺口还在：刷新会丢掉格子和撤销栈；坏档仍可能被写成 0 星。验收仍是刷新恢复、模式隔离、坏档不覆盖、旧星星不丢。
+4. 6×6 和新题型仍然靠后。
+
+验证见本轮测试、构建和截图。没有儿童测试。
+
+- `/opt/cursor/artifacts/43-exchange-hint-2.png`
+- `/opt/cursor/artifacts/51-insudoku-coach-1.png`
+- `/opt/cursor/artifacts/58-insudoku-clean-coach.png`
+- `/opt/cursor/artifacts/63-insudoku-show-why.png`
+- `/opt/cursor/artifacts/57-sudoku-com.png`
+- `/opt/cursor/artifacts/35-coach-very-easy.png`
+- `/opt/cursor/artifacts/70-phone-look.png`
+- `/opt/cursor/artifacts/71-tablet-why.png`
+- `/opt/cursor/artifacts/72-desktop-friend.png`
