@@ -14,10 +14,13 @@ describe('kid adventure stats sync', () => {
     expect(app).toContain("stars={state.experienceMode === 'kid' ? kidAdventureStats.stars : state.stars}");
   });
 
-  it('updates kid progress inside board using score and mistakes', () => {
+  it('reports tries and placed blocks without a penalty score', () => {
     const board = readFileSync(new URL('../src/components/KidAdventureBoard.tsx', import.meta.url), 'utf8');
+    const play = readFileSync(new URL('../src/kid-adventure/play.ts', import.meta.url), 'utf8');
     expect(board).toContain('onProgressChange?: (progress: { mistakes: number; score: number; stars: number }) => void;');
-    expect(board).toContain('score: isCorrect ? prev.score + 10 : Math.max(0, prev.score - 5),');
-    expect(board).toContain('onProgressChange?.({');
+    expect(board).toContain('mistakes: play.tried');
+    expect(board).toContain('score: kidPlacedScore(play)');
+    expect(play).not.toContain('prev.score - 5');
+    expect(board).not.toContain('不是这个数字');
   });
 });

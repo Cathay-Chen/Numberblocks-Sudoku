@@ -38,6 +38,7 @@ export default function App() {
   } = useSudokuGame();
 
   const [started, setStarted] = useState(false);
+  const [kidRound, setKidRound] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [kidAdventureStats, setKidAdventureStats] = useState<KidAdventureStats>({
@@ -119,7 +120,7 @@ export default function App() {
             >
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-sky-600">3-6岁推荐</p>
               <h2 className="font-display mt-2 text-3xl text-slate-900">开始冒险</h2>
-              <p className="mt-2 text-sm text-slate-700">4x4 闯关、图片积木、单步引导、星星奖励</p>
+              <p className="mt-2 text-sm text-slate-700">4×4 小宫，看行、列和朋友，可以撤销再试</p>
             </button>
             <button
               type="button"
@@ -164,6 +165,7 @@ export default function App() {
                   className="btn btn-ghost btn-sm border border-slate-200"
                   onClick={() => {
                     enterKidExperience();
+                    setKidRound((round) => round + 1);
                   }}
                 >
                   重新开始冒险
@@ -182,6 +184,7 @@ export default function App() {
           <section className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             {state.experienceMode === 'kid' ? (
               <KidAdventureBoard
+                key={kidRound}
                 totalStars={state.stars}
                 levelStars={state.kidLevelStars}
                 onEarnStars={updateKidLevelStars}
@@ -206,7 +209,7 @@ export default function App() {
                 score={state.experienceMode === 'kid' ? kidAdventureStats.score : state.score}
                 stars={state.experienceMode === 'kid' ? kidAdventureStats.stars : state.stars}
                 kidMode={state.kidMode}
-                hintText={state.hintText}
+                hintText={state.experienceMode === 'kid' ? '' : state.hintText}
                 onAction={handleAction}
               />
               {state.experienceMode === 'kid' && (
@@ -224,7 +227,7 @@ export default function App() {
             </aside>
           </section>
 
-          <TipBanner />
+          <TipBanner variant={state.experienceMode === 'kid' ? 'kid' : 'classic'} />
         </main>
 
         <footer className="mt-auto py-6 text-center text-sm font-bold text-slate-500">
@@ -246,7 +249,7 @@ export default function App() {
               <h3 className="font-display text-3xl text-slate-900">玩法说明</h3>
               <div className="space-y-2 text-sm text-slate-700">
                 <p>经典模式：点击格子后，使用数字积木填入。错误会累计，达到上限本局结束。</p>
-                <p>幼儿冒险：完成 4x4 关卡可得星星，并自动解锁下一关。</p>
+                <p>幼儿冒险：4×4 里，每一行、每一列、每一小宫都要有 1、2、3、4。放重复了会指出那一组，可以撤销再试。</p>
                 <p>拖拽支持：经典模式可以把数字积木拖到目标格子。</p>
                 <p>提示工具：可使用提示、自动备注、撤销和重做辅助解题。</p>
               </div>

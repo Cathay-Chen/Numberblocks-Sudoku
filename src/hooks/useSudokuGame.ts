@@ -67,14 +67,17 @@ export function useSudokuGame() {
   const progressReadyRef = useRef(false);
 
   useEffect(() => {
-    if (state.completed || state.failed) return;
+    if (state.experienceMode === 'kid' || state.completed || state.failed) return;
 
     const id = setInterval(() => {
-      setState((prev) => ({ ...prev, elapsedSeconds: prev.elapsedSeconds + 1 }));
+      setState((prev) => {
+        if (prev.experienceMode === 'kid' || prev.completed || prev.failed) return prev;
+        return { ...prev, elapsedSeconds: prev.elapsedSeconds + 1 };
+      });
     }, 1000);
 
     return () => clearInterval(id);
-  }, [state.completed, state.failed]);
+  }, [state.completed, state.failed, state.experienceMode]);
 
   useEffect(() => {
     progressReadyRef.current = true;

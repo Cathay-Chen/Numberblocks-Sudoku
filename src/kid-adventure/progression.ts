@@ -20,28 +20,28 @@ type Story = {
 
 const LEVEL_STORIES: Record<number, Story> = {
   1: {
-    title: '小草地任务',
-    voiceText: '欢迎来到小草地，找到空格里最合适的数字吧。',
+    title: '小草地',
+    voiceText: '每一行都要有 1、2、3、4。先找只剩一个空位的行。',
   },
   2: {
-    title: '泡泡河任务',
-    voiceText: '我们到泡泡河啦，慢慢填，别着急。',
+    title: '泡泡河',
+    voiceText: '这一关的行都还有两个空位。先看只剩一个空位的列。',
   },
   3: {
-    title: '彩虹桥任务',
-    voiceText: '跨过彩虹桥前，再检查每一行是不是一到四。',
+    title: '彩虹桥',
+    voiceText: '粗框里的小宫，也要有 1、2、3、4。',
   },
   4: {
-    title: '云朵山任务',
-    voiceText: '云朵山有点难，先找最明显的空格。',
+    title: '云朵山',
+    voiceText: '填好一个，再找下一个只剩一个空位的地方。',
   },
   5: {
-    title: '星光谷任务',
-    voiceText: '星光谷在发光，连对几步就能拿到星星。',
+    title: '星光谷',
+    voiceText: '行、列、小宫轮流看，新的空位会自己露出来。',
   },
   6: {
-    title: '终点城堡任务',
-    voiceText: '最后一关，勇敢一点，我们要到城堡啦。',
+    title: '终点城堡',
+    voiceText: '自己把四行、四列、四个小宫都补齐。',
   },
 };
 
