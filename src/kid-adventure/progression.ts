@@ -3,6 +3,7 @@ export const KID_PROGRESS_KEY = 'numberblocks.kid-progress.v1';
 export type KidProgress = {
   stars: number;
   levelStars: number[];
+  warmupDone?: boolean;
 };
 
 type ReadonlyStorage = {
@@ -20,28 +21,28 @@ type Story = {
 
 const LEVEL_STORIES: Record<number, Story> = {
   1: {
-    title: '小草地任务',
-    voiceText: '欢迎来到小草地，找到空格里最合适的数字吧。',
+    title: '小草地',
+    voiceText: '每一行都要有 1、2、3、4。先找只剩一个空位的行。',
   },
   2: {
-    title: '泡泡河任务',
-    voiceText: '我们到泡泡河啦，慢慢填，别着急。',
+    title: '泡泡河',
+    voiceText: '这一关的行都还有两个空位。先看只剩一个空位的列。',
   },
   3: {
-    title: '彩虹桥任务',
-    voiceText: '跨过彩虹桥前，再检查每一行是不是一到四。',
+    title: '彩虹桥',
+    voiceText: '粗框里的小宫，也要有 1、2、3、4。',
   },
   4: {
-    title: '云朵山任务',
-    voiceText: '云朵山有点难，先找最明显的空格。',
+    title: '云朵山',
+    voiceText: '填好一个，再找下一个只剩一个空位的地方。',
   },
   5: {
-    title: '星光谷任务',
-    voiceText: '星光谷在发光，连对几步就能拿到星星。',
+    title: '星光谷',
+    voiceText: '行、列、小宫轮流看，新的空位会自己露出来。',
   },
   6: {
-    title: '终点城堡任务',
-    voiceText: '最后一关，勇敢一点，我们要到城堡啦。',
+    title: '终点城堡',
+    voiceText: '自己把四行、四列、四个小宫都补齐。',
   },
 };
 
@@ -55,15 +56,35 @@ export const loadKidProgress = (storage: ReadonlyStorage): KidProgress | null =>
   try {
     const raw = storage.getItem(KID_PROGRESS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as KidProgress;
+    const parsed = JSON.parse(raw) as Partial<KidProgress>;
     if (!Array.isArray(parsed.levelStars)) return null;
     if (typeof parsed.stars !== 'number') return null;
-    return parsed;
+    const progress: KidProgress = {
+      stars: parsed.stars,
+      levelStars: parsed.levelStars,
+    };
+    if (parsed.warmupDone === true || parsed.warmupDone === false) {
+      progress.warmupDone = parsed.warmupDone;
+    }
+    return progress;
   } catch {
     return null;
   }
 };
 
 export const saveKidProgress = (storage: WritableStorage, progress: KidProgress) => {
-  storage.setItem(KID_PROGRESS_KEY, JSON.stringify(progress));
+  const stored: KidProgress = {
+    stars: progress.stars,
+    levelStars: progress.levelStars,
+  };
+  if (typeof progress.warmupDone === 'boolean') stored.warmupDone = progress.warmupDone;
+  storage.setItem(KID_PROGRESS_KEY, JSON.stringify(stored));
+};
+
+// 旧存档没有这个字段。有星星说明已经玩过棋盘，不再强制重看准备；星星本身不改。
+export const resolveWarmupDone = (progress: KidProgress): boolean => {
+  if (progress.warmupDone === true) return true;
+  if (progress.warmupDone === false) return false;
+  if (progress.stars > 0) return true;
+  return progress.levelStars.some((stars) => stars > 0);
 };

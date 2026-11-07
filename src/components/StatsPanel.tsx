@@ -26,10 +26,12 @@ export function StatsPanel({
 }: StatsPanelProps) {
   return (
     <section className="panel p-5">
-      <h2 className="mb-3 flex items-center gap-2">
-        <span className="h-3.5 w-3.5 rounded-full bg-sky-500"></span>
-        <strong className="font-display text-4xl leading-none">{formatTime(elapsedSeconds)}</strong>
-      </h2>
+      {!kidMode && (
+        <h2 className="mb-3 flex items-center gap-2">
+          <span className="h-3.5 w-3.5 rounded-full bg-sky-500"></span>
+          <strong className="font-display text-4xl leading-none">{formatTime(elapsedSeconds)}</strong>
+        </h2>
+      )}
 
       <dl className="grid gap-2 text-sm font-bold text-slate-700">
         {!kidMode && (
@@ -39,13 +41,13 @@ export function StatsPanel({
           </div>
         )}
         <div className="flex items-center justify-between">
-          <dt>错误</dt>
-          <dd className="text-rose-600">
-            {mistakes} / {maxMistakes}
+          <dt>{kidMode ? '试过' : '错误'}</dt>
+          <dd className={kidMode ? 'text-slate-700' : 'text-rose-600'}>
+            {kidMode ? `${mistakes} 次` : `${mistakes} / ${maxMistakes}`}
           </dd>
         </div>
         <div className="flex items-center justify-between">
-          <dt>分数</dt>
+          <dt>{kidMode ? '放好' : '分数'}</dt>
           <dd>{score.toLocaleString('zh-CN')}</dd>
         </div>
         {kidMode && (
@@ -82,7 +84,7 @@ export function StatsPanel({
         </div>
       )}
 
-      <p className="mt-3 min-h-6 text-sm text-slate-500">{hintText}</p>
+      {hintText ? <p className="mt-3 min-h-6 text-sm text-slate-500">{hintText}</p> : null}
     </section>
   );
 }

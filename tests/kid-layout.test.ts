@@ -7,16 +7,18 @@ describe('kid adventure layout', () => {
     expect(css).toMatch(/\.kid-cell\s*{[\s\S]*aspect-ratio:\s*1\s*\/\s*1/);
   });
 
-  it('centers and constrains the 4x4 kid grid size', () => {
+  it('centers the 4x4 grid and draws the four boxes', () => {
     const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
     expect(css).toMatch(/\.kid-grid\s*{[\s\S]*width:\s*min\(100%,\s*18\.5rem\)/);
     expect(css).toMatch(/\.kid-grid\s*{[\s\S]*margin-inline:\s*auto/);
+    expect(css).toMatch(/\.kid-box\s*{[\s\S]*border:\s*3px solid #0f172a/);
   });
 
-  it('mounts level map under stats panel in App', () => {
+  it('opens on the warmup instead of a mode menu', () => {
     const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-    expect(app).toContain('levelMapHostId="kid-level-map-slot"');
-    expect(app).toContain('<div id="kid-level-map-slot"></div>');
+    expect(app).toContain('<WarmupPlay');
+    expect(app).not.toContain('开始冒险');
+    expect(app).toContain('家长');
   });
 
   it('does not clamp kid cell block image to a fixed 44x44 box', () => {

@@ -1,23 +1,25 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
-describe('kid adventure stats sync', () => {
-  it('exposes progress callback from kid board to app', () => {
-    const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-    expect(app).toContain('onProgressChange={(progress) => setKidAdventureStats(progress)}');
+describe('kid journey keeps records and drops the life panel', () => {
+  it('saves warmup completion beside the existing star fields', () => {
+    const hook = readFileSync(new URL('../src/hooks/useSudokuGame.ts', import.meta.url), 'utf8');
+    expect(hook).toContain('warmupDone: state.warmupDone');
+    expect(hook).toContain('resolveWarmupDone');
   });
 
-  it('uses kid adventure stats for stats panel in kid mode', () => {
+  it('does not show the classic mistake limit on the child path', () => {
     const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
-    expect(app).toContain("mistakes={state.experienceMode === 'kid' ? kidAdventureStats.mistakes : state.mistakes}");
-    expect(app).toContain("score={state.experienceMode === 'kid' ? kidAdventureStats.score : state.score}");
-    expect(app).toContain("stars={state.experienceMode === 'kid' ? kidAdventureStats.stars : state.stars}");
+    expect(app).toContain("place === 'learn'");
+    expect(app).not.toContain('kidAdventureStats');
+    expect(app).not.toContain('错误 /');
   });
 
-  it('updates kid progress inside board using score and mistakes', () => {
+  it('still explains a duplicate instead of saying the hidden answer is wrong', () => {
     const board = readFileSync(new URL('../src/components/KidAdventureBoard.tsx', import.meta.url), 'utf8');
-    expect(board).toContain('onProgressChange?: (progress: { mistakes: number; score: number; stars: number }) => void;');
-    expect(board).toContain('score: isCorrect ? prev.score + 10 : Math.max(0, prev.score - 5),');
-    expect(board).toContain('onProgressChange?.({');
+    const play = readFileSync(new URL('../src/kid-adventure/play.ts', import.meta.url), 'utf8');
+    expect(board).not.toContain('不是这个数字');
+    expect(play).not.toContain('prev.score - 5');
+    expect(play).not.toContain('solution');
   });
 });

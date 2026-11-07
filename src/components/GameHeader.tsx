@@ -21,7 +21,7 @@ export function GameHeader({ onOpenGuide, onOpenSettings, onGoHome }: GameHeader
           <span>Numberblocks Sudoku</span>
         </button>
       </div>
-      <nav className="hidden items-center gap-8 font-semibold text-slate-700 md:flex">
+      <nav className="flex items-center gap-3 text-sm font-semibold text-slate-700 md:gap-8 md:text-base">
         <button
           type="button"
           className="transition-colors hover:text-sky-600"

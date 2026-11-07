@@ -28,6 +28,7 @@ export type GameState = {
   stars: number;
   correctStreak: number;
   kidLevelStars: number[];
+  warmupDone: boolean;
   voiceGuideEnabled: boolean;
   hintText: string;
   elapsedSeconds: number;
