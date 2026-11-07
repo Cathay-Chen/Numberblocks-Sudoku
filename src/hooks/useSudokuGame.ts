@@ -15,7 +15,7 @@ import {
   getCandidates,
   isComplete,
 } from '../game/utils';
-import { loadKidProgress, saveKidProgress } from '../kid-adventure/progression';
+import { loadKidProgress, resolveWarmupDone, saveKidProgress } from '../kid-adventure/progression';
 
 type Snapshot = {
   board: number[][];
@@ -37,16 +37,30 @@ const normalizeKidLevelStars = (input: number[]): number[] =>
 
 const createBootState = (): GameState => {
   const base = createInitialState('easy');
-  if (typeof window === 'undefined') return base;
-  const progress = loadKidProgress(window.localStorage);
-  if (!progress) return base;
-  return {
+  const kidBase: GameState = {
     ...base,
-    experienceMode: 'classic',
+    experienceMode: 'kid',
+    kidMode: true,
+    kidAdventureMode: true,
+  };
+  if (typeof window === 'undefined') return kidBase;
+  const progress = loadKidProgress(window.localStorage);
+  if (!progress) return kidBase;
+  return {
+    ...kidBase,
     stars: progress.stars,
     kidLevelStars: normalizeKidLevelStars(progress.levelStars),
+    warmupDone: resolveWarmupDone(progress),
   };
 };
+
+const carryKidRecord = (prev: GameState, next: GameState): GameState => ({
+  ...next,
+  stars: prev.stars,
+  kidLevelStars: prev.kidLevelStars.slice(),
+  warmupDone: prev.warmupDone,
+  voiceGuideEnabled: prev.voiceGuideEnabled,
+});
 
 const restoreSnapshot = (state: GameState, snapshot: Snapshot): GameState => {
   const next = {
@@ -89,8 +103,9 @@ export function useSudokuGame() {
     saveKidProgress(window.localStorage, {
       stars: state.stars,
       levelStars: state.kidLevelStars,
+      warmupDone: state.warmupDone,
     });
-  }, [state.stars, state.kidLevelStars]);
+  }, [state.stars, state.kidLevelStars, state.warmupDone]);
 
   const actionLabel = useMemo(
     () => (state.notesMode ? '备注模式: 开' : '备注模式: 关'),
@@ -110,13 +125,10 @@ export function useSudokuGame() {
       const nextDifficulty = prev.kidMode ? 'easy' : difficulty;
       const next = createInitialState(nextDifficulty);
       return {
-        ...next,
+        ...carryKidRecord(prev, next),
         experienceMode: prev.experienceMode,
         kidMode: prev.kidMode,
         kidAdventureMode: prev.kidAdventureMode,
-        stars: prev.stars,
-        kidLevelStars: prev.kidLevelStars.slice(),
-        voiceGuideEnabled: prev.voiceGuideEnabled,
         hintText: prev.kidMode ? '幼儿模式进行中：先找只缺一个数字的一行。' : '',
       };
     });
@@ -412,12 +424,9 @@ export function useSudokuGame() {
           const nextKidMode = !prev.kidMode;
           const next = createInitialState(nextKidMode ? 'easy' : 'medium');
           return {
-            ...next,
+            ...carryKidRecord(prev, next),
             kidMode: nextKidMode,
             kidAdventureMode: false,
-            stars: prev.stars,
-            kidLevelStars: prev.kidLevelStars.slice(),
-            voiceGuideEnabled: prev.voiceGuideEnabled,
             hintText: nextKidMode
               ? '幼儿模式已开启：点“小步提示”，我会带你做下一步。'
               : '已退出幼儿模式，回到标准玩法。',
@@ -483,13 +492,10 @@ export function useSudokuGame() {
     setState((prev) => {
       const next = createInitialState('easy');
       return {
-        ...next,
+        ...carryKidRecord(prev, next),
         experienceMode: 'kid',
         kidMode: true,
         kidAdventureMode: true,
-        voiceGuideEnabled: prev.voiceGuideEnabled,
-        stars: prev.stars,
-        kidLevelStars: prev.kidLevelStars.slice(),
         hintText: '欢迎来到幼儿冒险，先从第1关开始。',
       };
     });
@@ -501,15 +507,16 @@ export function useSudokuGame() {
     setState((prev) => {
       const next = createInitialState('easy');
       return {
-        ...next,
+        ...carryKidRecord(prev, next),
         experienceMode: 'classic',
         kidMode: false,
         kidAdventureMode: false,
-        voiceGuideEnabled: prev.voiceGuideEnabled,
-        stars: prev.stars,
-        kidLevelStars: prev.kidLevelStars.slice(),
       };
     });
+  };
+
+  const markWarmupDone = () => {
+    setState((prev) => (prev.warmupDone ? prev : { ...prev, warmupDone: true }));
   };
 
   const updateKidLevelStars = (levelId: number, starsEarned: number) => {
@@ -541,6 +548,7 @@ export function useSudokuGame() {
     placeNumberFromDrag,
     newGame,
     updateKidLevelStars,
+    markWarmupDone,
     enterKidExperience,
     enterClassicExperience,
   };

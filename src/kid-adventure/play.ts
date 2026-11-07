@@ -55,6 +55,21 @@ export const kidPlacedScore = (play: KidPlay): number => {
   return placed * KID_PLACEMENT_SCORE;
 };
 
+const KID_DIGITS = [1, 2, 3, 4];
+
+// 第一行若只剩一个空位，把那一行亮出来。缺的数字从这一行数出来，不读答案。
+export const greetLikeWarmup = (play: KidPlay): KidPlay => {
+  const row = play.board[0];
+  if (!row || row.filter((value) => value === 0).length !== 1) return play;
+  const missing = KID_DIGITS.find((digit) => !row.includes(digit));
+  if (!missing) return play;
+  return {
+    ...play,
+    focus: row.map((_, col) => ({ row: 0, col })),
+    feedback: { tone: 'hint', text: '第一行只剩一个空位。', value: missing },
+  };
+};
+
 export const createKidPlay = (levelId: number): KidPlay => {
   const level = createKidLevelState(levelId);
   return {

@@ -3,6 +3,7 @@ export const KID_PROGRESS_KEY = 'numberblocks.kid-progress.v1';
 export type KidProgress = {
   stars: number;
   levelStars: number[];
+  warmupDone?: boolean;
 };
 
 type ReadonlyStorage = {
@@ -55,15 +56,35 @@ export const loadKidProgress = (storage: ReadonlyStorage): KidProgress | null =>
   try {
     const raw = storage.getItem(KID_PROGRESS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as KidProgress;
+    const parsed = JSON.parse(raw) as Partial<KidProgress>;
     if (!Array.isArray(parsed.levelStars)) return null;
     if (typeof parsed.stars !== 'number') return null;
-    return parsed;
+    const progress: KidProgress = {
+      stars: parsed.stars,
+      levelStars: parsed.levelStars,
+    };
+    if (parsed.warmupDone === true || parsed.warmupDone === false) {
+      progress.warmupDone = parsed.warmupDone;
+    }
+    return progress;
   } catch {
     return null;
   }
 };
 
 export const saveKidProgress = (storage: WritableStorage, progress: KidProgress) => {
-  storage.setItem(KID_PROGRESS_KEY, JSON.stringify(progress));
+  const stored: KidProgress = {
+    stars: progress.stars,
+    levelStars: progress.levelStars,
+  };
+  if (typeof progress.warmupDone === 'boolean') stored.warmupDone = progress.warmupDone;
+  storage.setItem(KID_PROGRESS_KEY, JSON.stringify(stored));
+};
+
+// 旧存档没有这个字段。有星星说明已经玩过棋盘，不再强制重看准备；星星本身不改。
+export const resolveWarmupDone = (progress: KidProgress): boolean => {
+  if (progress.warmupDone === true) return true;
+  if (progress.warmupDone === false) return false;
+  if (progress.stars > 0) return true;
+  return progress.levelStars.some((stars) => stars > 0);
 };

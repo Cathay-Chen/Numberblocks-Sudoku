@@ -254,6 +254,37 @@
     box-shadow: 0 0 0 3px #f59e0b;
   }
 
+  .warmup-sheet {
+    @apply mx-auto w-full max-w-xl;
+  }
+
+  .warmup-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: min(100%, 22rem);
+    margin-inline: auto;
+    gap: 8px;
+  }
+
+  .warmup-box {
+    width: min(100%, 16rem);
+    margin-inline: auto;
+  }
+
+  .warmup-cell {
+    @apply grid place-items-center overflow-hidden rounded-2xl border-2 border-slate-200 bg-white;
+    aspect-ratio: 1 / 1;
+    min-height: 64px;
+  }
+
+  .warmup-cell-empty {
+    @apply border-dashed border-sky-400 bg-sky-50;
+  }
+
+  .warmup-cell-hot {
+    box-shadow: 0 0 0 3px #f59e0b;
+  }
+
   .fireworks-layer {
     @apply pointer-events-none absolute inset-0 overflow-hidden;
   }
