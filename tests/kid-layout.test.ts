@@ -14,6 +14,18 @@ describe('kid adventure layout', () => {
     expect(css).toMatch(/\.kid-box\s*{[\s\S]*border:\s*3px solid #0f172a/);
   });
 
+  it('wraps the level dots so a 320px screen is not forced wider', () => {
+    const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.kid-levels\s*{[^}]*flex-wrap:\s*wrap/);
+    expect(css).not.toMatch(/\.kid-shell\s*{[^}]*overflow:\s*hidden/);
+  });
+
+  it('keeps the parent control readable on the meadow', () => {
+    const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.kid-parent\s*{[^}]*color:\s*#1e3a2f/);
+    expect(css).not.toMatch(/\.kid-parent\s*{[^}]*color:\s*#64748b/);
+  });
+
   it('opens on the warmup instead of a mode menu', () => {
     const app = readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
     expect(app).toContain('<WarmupPlay');

@@ -93,11 +93,16 @@ describe('kid adventure engine', () => {
     for (const level of KID_LEVELS) {
       let play = createKidPlay(level.id);
       for (let guard = 0; guard < 16 && !play.completed; guard += 1) {
-        const hinted = hintKidPlay(play);
-        expect(hinted.board).toEqual(play.board);
-        expect(hinted.feedback.tone).toBe('hint');
-        expect(hinted.feedback.value).toBeTruthy();
-        play = placeKidNumber(hinted, hinted.feedback.value ?? 0);
+        let hinted = play;
+        let value: number | null = null;
+        for (let step = 0; step < 4 && value == null; step += 1) {
+          hinted = hintKidPlay(hinted);
+          expect(hinted.board).toEqual(play.board);
+          value = hinted.feedback.value;
+        }
+        expect(value).toBeTruthy();
+        expect(hinted.feedback.text.length).toBeGreaterThan(0);
+        play = placeKidNumber(hinted, value ?? 0);
       }
       expect(play.completed).toBe(true);
       expect(isKidGridComplete(play.board)).toBe(true);

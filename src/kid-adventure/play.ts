@@ -1,12 +1,9 @@
+import { coachLadder } from './coach';
 import { createKidLevelState } from './engine';
 import {
   cloneKidBoard,
   conflictForPlacement,
   describeConflict,
-  describeLastInHouse,
-  findDuplicate,
-  findLastInHouse,
-  findUnfillableCell,
   isKidGridComplete,
   type KidCell,
 } from './rules';
@@ -34,6 +31,8 @@ export type KidPlay = {
   completed: boolean;
   feedback: KidFeedback;
   focus: KidCell[];
+  coachKey: string;
+  coachStep: number;
 };
 
 const idle = (text: string): KidFeedback => ({ tone: 'idle', text, value: null });
@@ -66,7 +65,7 @@ export const greetLikeWarmup = (play: KidPlay): KidPlay => {
   return {
     ...play,
     focus: row.map((_, col) => ({ row: 0, col })),
-    feedback: { tone: 'hint', text: '第一行只剩一个空位。', value: missing },
+    feedback: { tone: 'hint', text: '第一行只剩一个空位。', value: null },
   };
 };
 
@@ -83,6 +82,8 @@ export const createKidPlay = (levelId: number): KidPlay => {
     completed: false,
     feedback: idle('点一个空格，再点积木。'),
     focus: [],
+    coachKey: '',
+    coachStep: 0,
   };
 };
 
@@ -90,6 +91,14 @@ export const selectKidCell = (play: KidPlay, cell: KidCell): KidPlay => ({
   ...play,
   selected: cell,
 });
+
+// 提示已经圈出一组、且里面只剩一个空位时，点数字就可以放进去。
+export const emptyFocusTarget = (play: KidPlay): KidCell | null => {
+  const empties = play.focus.filter(
+    (cell) => play.board[cell.row]?.[cell.col] === 0 && !play.givens[cell.row]?.[cell.col]
+  );
+  return empties.length === 1 ? empties[0] : null;
+};
 
 export const placeKidNumber = (play: KidPlay, value: number): KidPlay => {
   if (play.completed) return play;
@@ -197,53 +206,23 @@ export const clearKidCell = (play: KidPlay): KidPlay => {
 };
 
 // 提示只看当前盘：先重复，再走不通的空格，再找只剩一个空位的一组。
+const boardKey = (board: number[][]) => board.map((row) => row.join('')).join('|');
+
 export const hintKidPlay = (play: KidPlay): KidPlay => {
   if (play.completed) return play;
-
-  const duplicate = findDuplicate(play.board, play.givens);
-  if (duplicate) {
-    return {
-      ...play,
-      selected: duplicate.at,
-      focus: duplicate.cells,
-      feedback: {
-        tone: 'conflict',
-        text: describeConflict(duplicate.house, duplicate.value),
-        value: duplicate.value,
-      },
-    };
-  }
-
-  const stuck = findUnfillableCell(play.board);
-  if (stuck) {
-    return {
-      ...play,
-      selected: stuck,
-      focus: [stuck],
-      feedback: {
-        tone: 'stuck',
-        text: '这个空格放不下了。按撤销，换一个试试。',
-        value: null,
-      },
-    };
-  }
-
-  const step = findLastInHouse(play.board);
-  if (!step) {
-    return {
-      ...play,
-      feedback: idle('先找已经有三个朋友的一行、一列或一小宫。'),
-      focus: [],
-    };
-  }
-
+  const ladder = coachLadder(play.board, play.givens);
+  const key = boardKey(play.board);
+  const index = play.coachKey === key ? Math.min(play.coachStep, ladder.length - 1) : 0;
+  const step = ladder[index];
   return {
     ...play,
-    selected: { row: step.row, col: step.col },
+    coachKey: key,
+    coachStep: index + 1 < ladder.length ? index + 1 : index,
+    selected: step.focus ?? play.selected,
     focus: step.cells,
     feedback: {
-      tone: 'hint',
-      text: describeLastInHouse(step),
+      tone: step.kind === 'duplicate' || step.kind === 'stuck' ? 'conflict' : 'hint',
+      text: step.text,
       value: step.value,
     },
   };

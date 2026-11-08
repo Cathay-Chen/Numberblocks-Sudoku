@@ -80,6 +80,14 @@ class SfxPlayer {
   setFeedbackEnabled(enabled: boolean) {
     this.feedbackEnabled = enabled;
   }
+
+  feedbackAudible() {
+    return this.feedbackEnabled && this.masterVolume > 0;
+  }
+
+  scaledVolume(base: number) {
+    return Math.max(0, Math.min(1, base * this.masterVolume));
+  }
 }
 
 export const sfx = new SfxPlayer();

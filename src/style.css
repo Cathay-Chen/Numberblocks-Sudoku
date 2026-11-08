@@ -232,12 +232,15 @@
   }
 
   .kid-cell {
-    @apply grid w-full place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-2xl font-black text-slate-800 transition-all;
+    @apply grid w-full place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-2xl font-black text-slate-800;
     aspect-ratio: 1 / 1;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .kid-cell-selected {
-    @apply border-sky-500 bg-sky-50 shadow;
+    @apply border-sky-700 bg-sky-50;
+    outline: 3px dashed #0369a1;
+    outline-offset: 3px;
   }
 
   .kid-cell-given {
@@ -245,7 +248,44 @@
   }
 
   .kid-cell-wrong {
-    @apply border-rose-400 bg-rose-50 text-rose-700;
+    @apply border-rose-500 bg-rose-100 text-rose-700;
+    box-shadow: 0 0 0 6px #ef4444;
+  }
+
+  .kid-cell-ack,
+  .warmup-ack {
+    z-index: 2;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 6px #16a34a;
+    animation: cell-ack 0.8s ease-out;
+  }
+
+  .kid-cell-bump,
+  .warmup-bump {
+    z-index: 2;
+    animation: cell-bump 0.55s ease-in-out;
+  }
+
+  .kid-cell-need {
+    z-index: 2;
+    box-shadow: 0 0 0 5px #f59e0b;
+    animation: cell-bump 0.55s ease-in-out;
+  }
+
+  .board-clear .kid-cell {
+    animation: cheer-hop 1.15s ease-out both;
+  }
+
+  .board-clear .kid-cell:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+
+  .board-clear .kid-cell:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+
+  .board-clear .kid-cell:nth-child(4) {
+    animation-delay: 0.24s;
   }
 
   .kid-cell-hint {
@@ -272,9 +312,219 @@
   }
 
   .warmup-cell {
-    @apply grid place-items-center overflow-hidden rounded-2xl border-2 border-slate-200 bg-white;
+    @apply grid place-items-center overflow-hidden rounded-2xl border-[3px] border-slate-900 bg-white;
     aspect-ratio: 1 / 1;
-    min-height: 64px;
+    min-height: 72px;
+  }
+
+  .kid-shell {
+    min-height: 100vh;
+    background: #e7f3c8;
+    color: #1e293b;
+  }
+
+  .kid-top,
+  .kid-main {
+    width: min(28rem, calc(100% - 16px));
+    max-width: 100%;
+    margin-inline: auto;
+    box-sizing: border-box;
+  }
+
+  .kid-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+  }
+
+  .kid-stars {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #92400e;
+  }
+
+  .kid-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .kid-quiet,
+  .kid-parent,
+  .kid-go,
+  .kid-again,
+  .kid-pad button,
+  .kid-level,
+  .kid-cell,
+  .warmup-cell {
+    font-family: 'Nunito', 'Baloo 2', sans-serif;
+  }
+
+  .kid-quiet,
+  .kid-parent {
+    min-height: 48px;
+    padding: 0 14px;
+    border-radius: 999px;
+    font-weight: 800;
+  }
+
+  .kid-quiet {
+    border: 3px solid #0f172a;
+    background: #fff;
+    color: #0f172a;
+  }
+
+  .kid-quiet[aria-pressed='false'] {
+    border-style: dashed;
+  }
+
+  .kid-parent {
+    border: 0;
+    background: transparent;
+    color: #1e3a2f;
+    font-size: 0.95rem;
+  }
+
+  .kid-card {
+    display: grid;
+    gap: 12px;
+    min-width: 0;
+    max-width: 100%;
+    border-radius: 28px;
+    background: #fff;
+    padding: 16px;
+    box-shadow: 0 8px 0 #d5e4a4;
+  }
+
+  .kid-task {
+    margin: 0;
+    text-align: center;
+    font-family: 'Baloo 2', 'Nunito', sans-serif;
+    font-size: 1.75rem;
+    font-weight: 800;
+    line-height: 1.25;
+    color: #0f172a;
+  }
+
+  .kid-note {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    border-radius: 16px;
+    background: #ecfeff;
+    padding: 8px 12px;
+    font-weight: 800;
+    line-height: 1.4;
+    color: #164e63;
+  }
+
+  .kid-pad {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kid-pad button {
+    min-height: 72px;
+    border-radius: 16px;
+    border: 3px solid #0f172a;
+    background: #fff;
+    color: #0f172a;
+    font-weight: 800;
+  }
+
+  .kid-pad button:active {
+    transform: translateY(2px);
+  }
+
+  .kid-pad-mark {
+    display: block;
+    margin-top: 2px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .kid-go,
+  .kid-again {
+    display: flex;
+    width: 100%;
+    min-height: 56px;
+    align-items: center;
+    justify-content: center;
+    border-radius: 18px;
+    border: 3px solid #0f172a;
+    font-size: 1.25rem;
+    font-weight: 800;
+  }
+
+  .kid-go {
+    background: #0284c7;
+    color: #fff;
+  }
+
+  .kid-again {
+    background: #fff;
+    color: #0f172a;
+  }
+
+  .kid-tools {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .kid-tools .kid-quiet {
+    width: 100%;
+  }
+
+  .kid-tools .kid-wide {
+    grid-column: 1 / -1;
+  }
+
+  .kid-quiet:disabled,
+  .kid-pad button:disabled {
+    opacity: 0.4;
+  }
+
+  .kid-levels {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    max-width: 100%;
+  }
+
+  .kid-level {
+    width: 48px;
+    height: 48px;
+    border-radius: 999px;
+    border: 3px solid #0f172a;
+    background: #fff;
+    font-weight: 800;
+  }
+
+  .kid-level[aria-current='step'] {
+    background: #e0f2fe;
+    box-shadow: inset 0 -6px 0 #0f172a;
+  }
+
+  .kid-level:disabled {
+    opacity: 0.35;
+  }
+
+  .kid-quiet:focus-visible,
+  .kid-parent:focus-visible,
+  .kid-go:focus-visible,
+  .kid-again:focus-visible,
+  .kid-pad button:focus-visible,
+  .kid-level:focus-visible,
+  .kid-cell:focus-visible,
+  .warmup-cell:focus-visible {
+    outline: 3px solid #0f172a;
+    outline-offset: 3px;
   }
 
   .warmup-cell-empty {
@@ -282,7 +532,101 @@
   }
 
   .warmup-cell-hot {
-    box-shadow: 0 0 0 3px #f59e0b;
+    box-shadow: 0 0 0 4px #f59e0b;
+  }
+
+  .warmup-cell.warmup-ack {
+    background-color: #ecfdf5;
+  }
+
+  .warmup-cell.warmup-wrong {
+    background-color: #ffe4e6;
+    box-shadow: 0 0 0 6px #ef4444;
+  }
+
+  .cheer-friends {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .cheer-friend,
+  .warmup-pop {
+    width: 5.25rem;
+    height: 5.25rem;
+    animation: cheer-hop 1.15s ease-out both;
+  }
+
+  .cheer-friend:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+
+  .cheer-friend:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+
+  .cheer-friend:nth-child(4) {
+    animation-delay: 0.24s;
+  }
+
+  @keyframes cheer-hop {
+    0% {
+      transform: translateY(18px) scale(0.72);
+    }
+    35% {
+      transform: translateY(-36px) scale(1.18);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @keyframes cell-ack {
+    0% {
+      transform: scale(0.82);
+    }
+    55% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes cell-bump {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-14px);
+    }
+    40% {
+      transform: translateX(12px);
+    }
+    60% {
+      transform: translateX(-8px);
+    }
+    80% {
+      transform: translateX(6px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cheer-friend,
+    .warmup-pop,
+    .warmup-ack,
+    .warmup-bump,
+    .board-clear .kid-cell,
+    .kid-cell-ack,
+    .kid-cell-bump,
+    .kid-cell-need {
+      animation: none;
+    }
+
+    .kid-pad button:active {
+      transform: none;
+    }
   }
 
   .fireworks-layer {

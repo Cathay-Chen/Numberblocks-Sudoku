@@ -50,7 +50,7 @@ describe('warmup before the 4x4', () => {
   it('greets level 1 from the visible first row, not a stored solution', () => {
     const greeted = greetLikeWarmup(createKidPlay(1));
     expect(greeted.focus).toHaveLength(4);
-    expect(greeted.feedback.value).toBe(4);
+    expect(greeted.feedback.value).toBeNull();
     expect(greeted.feedback.text).toContain('第一行');
     expect(greetLikeWarmup(createKidPlay(2)).feedback.tone).toBe('idle');
   });

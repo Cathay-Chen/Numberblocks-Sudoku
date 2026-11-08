@@ -5,7 +5,7 @@ import {
   findSingleCandidateHint,
   getRewardDelta,
 } from '../game/kidMode';
-import { applyHint, findConflicts } from '../sudoku/logic';
+import { classicHintLadder, findConflicts } from '../sudoku/logic';
 import type { Difficulty, GameState } from '../game/types';
 import { sfx } from '../audio/sfx';
 import {
@@ -77,6 +77,8 @@ const restoreSnapshot = (state: GameState, snapshot: Snapshot): GameState => {
 export function useSudokuGame() {
   const [state, setState] = useState<GameState>(() => createBootState());
   const historyRef = useRef<Snapshot[]>([]);
+  const hintBoardRef = useRef('');
+  const hintStepRef = useRef(0);
   const futureRef = useRef<Snapshot[]>([]);
   const progressReadyRef = useRef(false);
 
@@ -341,27 +343,15 @@ export function useSudokuGame() {
       case GAME_ACTIONS.NEW_GAME:
         newGame();
         break;
-      case GAME_ACTIONS.HINT:
-        setState((prev) => {
-          const board = cloneBoard(prev.board);
-          pushHistory(prev);
-          const result = applyHint(board, prev.solution, prev.givens);
-
-          if (!result) {
-            historyRef.current.pop();
-            return prev;
-          }
-
-          return {
-            ...prev,
-            board,
-            conflicts: findConflicts(board),
-            completed: isComplete(board, prev.solution),
-            selectedCell: { row: result.row, col: result.col },
-            selectedValue: result.value,
-          };
-        });
+      case GAME_ACTIONS.HINT: {
+        const steps = classicHintLadder(state.board);
+        const key = state.board.map((row) => row.join(',')).join('|');
+        const index = hintBoardRef.current === key ? Math.min(hintStepRef.current, steps.length - 1) : 0;
+        hintBoardRef.current = key;
+        hintStepRef.current = index + 1 < steps.length ? index + 1 : index;
+        setState((prev) => ({ ...prev, hintText: steps[index] }));
         break;
+      }
       case GAME_ACTIONS.UNDO:
         undo();
         break;
