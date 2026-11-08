@@ -84,6 +84,7 @@ export default function App() {
       const button = target.closest('button');
       if (!(button instanceof HTMLButtonElement)) return;
       if (button.disabled) return;
+      if (cheers.feedbackJustPlayed()) return;
       sfx.playUiTap();
     };
 

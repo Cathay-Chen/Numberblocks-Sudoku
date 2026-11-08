@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { CelebrationSounds, type CelebrationAudio } from '../src/audio/celebration';
+import { CelebrationSounds, playbackPlan, type CelebrationAudio } from '../src/audio/celebration';
 import { sfx } from '../src/audio/sfx';
 import { cueForMove, cueForWarmup, shouldCelebrate } from '../src/kid-adventure/celebrate';
 import { createKidPlay, emptyFocusTarget, greetLikeWarmup, hintKidPlay, placeKidNumber, undoKidPlay } from '../src/kid-adventure/play';
@@ -33,6 +33,16 @@ describe('completion celebration', () => {
     expect(greeted.selected).toBeNull();
     expect(emptyFocusTarget(greeted)).toEqual({ row: 0, col: 3 });
     expect(emptyFocusTarget(createKidPlay(1))).toBeNull();
+  });
+
+  it('plays the loud part of a place cue and does not cut the longer cues short', () => {
+    const place = playbackPlan('place', 0.72);
+    expect(place.startSec).toBeGreaterThan(0.4);
+    expect(place.playMs).toBeGreaterThanOrEqual(200);
+    expect(place.playMs).toBeLessThan(400);
+    expect(playbackPlan('miss', 0.75).playMs).toBe(750);
+    expect(playbackPlan('board', 1.2).playMs).toBe(1200);
+    expect(playbackPlan('miss', 0.75).startSec).toBe(0);
   });
 
   it('celebrates only the transition into a finished state', () => {
