@@ -17,6 +17,7 @@ import {
   type KidPlay,
 } from '../kid-adventure/play';
 import { buildLevelStory } from '../kid-adventure/progression';
+import { loadKidSession, restoreKidPlay, saveKidSession } from '../kid-adventure/session';
 import { conflictCells } from '../kid-adventure/rules';
 import { NumberBlock } from './NumberBlock';
 
@@ -36,8 +37,15 @@ export function KidAdventureBoard({
   onReplayWarmup,
 }: KidAdventureBoardProps) {
   const [play, setPlay] = useState<KidPlay>(() => {
-    const started = createKidPlay(selectResumeLevel(totalStars, levelStars));
-    return greet ? greetLikeWarmup(started) : started;
+    const saved = typeof window === 'undefined' ? null : loadKidSession(window.localStorage);
+    const unlocked = computeUnlockedLevels(totalStars);
+    const resume = selectResumeLevel(totalStars, levelStars);
+    const levelId = saved && saved.levelId <= unlocked ? saved.levelId : resume;
+    const started = createKidPlay(levelId);
+    if (saved && saved.levelId === started.levelId && saved.past.length > 0) {
+      return restoreKidPlay(started, saved);
+    }
+    return greet && levelId === resume ? greetLikeWarmup(started) : started;
   });
   const [moreTools, setMoreTools] = useState(false);
   const [pulse, setPulse] = useState<{ key: string; kind: 'place' | 'miss' } | null>(null);
@@ -110,6 +118,11 @@ export function KidAdventureBoard({
     if (!play.completed) return;
     onEarnStars(play.levelId, KID_CLEAR_STARS);
   }, [play.completed, play.levelId]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    saveKidSession(window.localStorage, play);
+  }, [play]);
 
   useEffect(
     () => () => {
