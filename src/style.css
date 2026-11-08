@@ -325,8 +325,10 @@
 
   .kid-top,
   .kid-main {
-    width: min(28rem, 94vw);
+    width: min(28rem, calc(100% - 16px));
+    max-width: 100%;
     margin-inline: auto;
+    box-sizing: border-box;
   }
 
   .kid-top {
@@ -380,13 +382,15 @@
   .kid-parent {
     border: 0;
     background: transparent;
-    color: #64748b;
+    color: #1e3a2f;
     font-size: 0.95rem;
   }
 
   .kid-card {
     display: grid;
     gap: 12px;
+    min-width: 0;
+    max-width: 100%;
     border-radius: 28px;
     background: #fff;
     padding: 16px;
@@ -487,8 +491,10 @@
 
   .kid-levels {
     display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
+    max-width: 100%;
   }
 
   .kid-level {
