@@ -71,8 +71,8 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
   );
 
   return (
-    <section className="warmup-sheet">
-      <div className="mb-4 flex items-center justify-center gap-2" aria-label="三步准备">
+    <section className="kid-card">
+      <div className="flex items-center justify-center gap-2" aria-label="三步准备">
         {WARMUP_STATIONS.map((item, index) => (
           <span
             key={item.id}
@@ -83,61 +83,50 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           />
         ))}
       </div>
-      <p className="mb-4 text-center font-display text-3xl leading-tight text-slate-900">{station.prompt}</p>
+      <p className="kid-task">{station.prompt}</p>
       {cells}
-      <div className="mt-4 grid grid-cols-4 gap-2">
-        {[1, 2, 3, 4].map((value) => (
-          <button
-            key={value}
-            type="button"
-            className="btn min-h-20 border border-slate-200 bg-white px-1"
-            aria-label={`放入数字积木 ${value}`}
-            onClick={() => {
-              const prev = play;
-              const next = placeWarmupFriend(prev, value);
-              setPlay(next);
-              playWarmupCue(prev, next);
-            }}
-          >
-            <span className="mx-auto block h-12 w-12">
-              <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
-            </span>
-          </button>
-        ))}
-      </div>
-      <div className="mt-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          className="btn min-h-12 border border-slate-200 bg-white font-black"
-          onClick={() => speakCoach(play.feedback.tone === 'idle' ? station.prompt : play.feedback.text)}
-        >
-          听一听
-        </button>
-        <button
-          type="button"
-          className="btn min-h-12 border border-slate-200 bg-white font-black"
-          disabled={play.past.length === 0}
-          onClick={() => {
-            const next = undoWarmup(play);
-            if (play.cleared && !next.cleared) cheers.stop();
-            setPlay(next);
-          }}
-        >
-          撤销
-        </button>
-      </div>
-      <div className="mt-3 flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
+      <div className="kid-note" aria-live="polite">
         {play.feedback.value ? (
           <div className={['h-12 w-12 shrink-0', play.cleared ? 'warmup-pop' : ''].join(' ')}>
             <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
           </div>
         ) : null}
-        <p className="text-base font-bold leading-6 text-cyan-950">{play.feedback.text}</p>
+        <p>{play.feedback.text}</p>
+      </div>
+      <div className="kid-pad">
+        {[1, 2, 3, 4].map((value) => {
+          const mark =
+            play.feedback.value === value
+              ? play.feedback.tone === 'conflict'
+                ? '重复'
+                : play.feedback.tone === 'found' || play.feedback.tone === 'done'
+                  ? '刚放'
+                  : ''
+              : '';
+          return (
+            <button
+              key={value}
+              type="button"
+              aria-label={`放入数字积木 ${value}${mark ? `，${mark}` : ''}`}
+              onClick={() => {
+                const prev = play;
+                const next = placeWarmupFriend(prev, value);
+                setPlay(next);
+                playWarmupCue(prev, next);
+              }}
+            >
+              <span className="mx-auto block h-10 w-10">
+                <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
+              </span>
+              {mark ? <span className="kid-pad-mark">{mark}</span> : <span className="kid-pad-mark">{value}</span>}
+            </button>
+          );
+        })}
       </div>
       {play.cleared && !play.finished && (
         <button
           type="button"
-          className="btn btn-primary mt-3 min-h-14 w-full text-lg"
+          className="kid-go"
           onClick={() => {
             cheers.stop();
             const next = advanceWarmup(play);
@@ -148,6 +137,27 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           {play.stationIndex === WARMUP_STATIONS.length - 1 ? '去小草地' : '下一个'}
         </button>
       )}
+      <div className="kid-tools">
+        <button
+          type="button"
+          className="kid-quiet"
+          onClick={() => speakCoach(play.feedback.tone === 'idle' ? station.prompt : play.feedback.text)}
+        >
+          听一听
+        </button>
+        <button
+          type="button"
+          className="kid-quiet"
+          disabled={play.past.length === 0}
+          onClick={() => {
+            const next = undoWarmup(play);
+            if (play.cleared && !next.cleared) cheers.stop();
+            setPlay(next);
+          }}
+        >
+          撤销
+        </button>
+      </div>
     </section>
   );
 }
