@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cheers } from '../audio/celebration';
-import { shouldCelebrate } from '../kid-adventure/celebrate';
+import { cueForMove } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import {
@@ -9,6 +9,7 @@ import {
   createKidPlay,
   greetLikeWarmup,
   hintKidPlay,
+  emptyFocusTarget,
   placeKidNumber,
   redoKidPlay,
   selectKidCell,
@@ -39,7 +40,11 @@ export function KidAdventureBoard({
     return greet ? greetLikeWarmup(started) : started;
   });
   const [moreTools, setMoreTools] = useState(false);
+  const [pulse, setPulse] = useState<{ key: string; kind: 'place' | 'miss' } | null>(null);
+  const [guideEmpties, setGuideEmpties] = useState(false);
   const playRef = useRef(play);
+  const pulseTimer = useRef(0);
+  const guideTimer = useRef(0);
   const unlockedLevels = computeUnlockedLevels(totalStars);
   const story = buildLevelStory(play.levelId);
   const conflicts = conflictCells(play.board);
@@ -47,17 +52,55 @@ export function KidAdventureBoard({
   const focusKeys = new Set(play.focus.map((cell) => `${cell.row}-${cell.col}`));
 
   const commit = (next: KidPlay) => {
-    const prev = playRef.current;
     playRef.current = next;
     setPlay(next);
-    if (shouldCelebrate(prev.completed, next.completed)) cheers.play('board');
+  };
+
+  const markPulse = (key: string, kind: 'place' | 'miss') => {
+    window.clearTimeout(pulseTimer.current);
+    setPulse({ key, kind });
+    pulseTimer.current = window.setTimeout(() => setPulse(null), kind === 'miss' ? 900 : 800);
+  };
+
+  const markGuide = () => {
+    window.clearTimeout(guideTimer.current);
+    setGuideEmpties(true);
+    guideTimer.current = window.setTimeout(() => setGuideEmpties(false), 800);
+  };
+
+  const placeFromPicker = (value: number) => {
+    const current = playRef.current;
+    const aimed = current.selected ? current : { ...current, selected: emptyFocusTarget(current) };
+    if (!aimed.selected) {
+      markGuide();
+      commit({
+        ...current,
+        feedback: { tone: 'idle', text: '先点一个空格。', value: null },
+      });
+      return;
+    }
+    const prev = aimed;
+    const next = placeKidNumber(prev, value);
+    commit(next);
     if (prev.completed && !next.completed) cheers.stop();
+    const cue = cueForMove({
+      beforeComplete: prev.completed,
+      afterComplete: next.completed,
+      tone: next.feedback.tone,
+    });
+    if (cue) cheers.play(cue);
+    if (next.selected && cue === 'place') markPulse(`${next.selected.row}-${next.selected.col}`, 'place');
+    if (cue === 'miss' && next.focus[0]) markPulse(`${next.focus[0].row}-${next.focus[0].col}`, 'miss');
   };
 
   const startLevel = (levelId: number, force = false) => {
     if (!force && levelId > unlockedLevels) return;
     window.speechSynthesis?.cancel();
     cheers.stop();
+    window.clearTimeout(pulseTimer.current);
+    window.clearTimeout(guideTimer.current);
+    setPulse(null);
+    setGuideEmpties(false);
     const next = createKidPlay(levelId);
     playRef.current = next;
     setPlay(next);
@@ -72,6 +115,8 @@ export function KidAdventureBoard({
     () => () => {
       window.speechSynthesis?.cancel();
       cheers.stop();
+      window.clearTimeout(pulseTimer.current);
+      window.clearTimeout(guideTimer.current);
     },
     []
   );
@@ -83,7 +128,7 @@ export function KidAdventureBoard({
         {story.voiceText}
       </p>
 
-      <div className="kid-grid" aria-label="四宫数独">
+                <div className={['kid-grid', play.completed ? 'board-clear' : ''].join(' ')} aria-label="四宫数独">
         {[0, 1, 2, 3].map((box) => {
           const startRow = Math.floor(box / 2) * 2;
           const startCol = (box % 2) * 2;
@@ -95,6 +140,7 @@ export function KidAdventureBoard({
                 const value = play.board[row][col];
                 const key = `${row}-${col}`;
                 const selected = play.selected?.row === row && play.selected?.col === col;
+                const wrong = conflicts.has(key) || (pulse?.kind === 'miss' && pulse.key === key);
                 return (
                   <button
                     key={key}
@@ -103,8 +149,11 @@ export function KidAdventureBoard({
                       'kid-cell',
                       selected ? 'kid-cell-selected' : '',
                       play.givens[row][col] ? 'kid-cell-given' : '',
-                      conflicts.has(key) ? 'kid-cell-wrong' : '',
-                      focusKeys.has(key) ? 'kid-cell-hint' : '',
+                      wrong ? 'kid-cell-wrong' : '',
+                      pulse?.kind === 'miss' && (pulse.key === key || focusKeys.has(key)) ? 'kid-cell-bump' : '',
+                      pulse?.kind === 'place' && pulse.key === key ? 'kid-cell-ack' : '',
+                      guideEmpties && value === 0 ? 'kid-cell-need' : '',
+                      focusKeys.has(key) && !wrong ? 'kid-cell-hint' : '',
                     ].join(' ')}
                     aria-label={`第${row + 1}行第${col + 1}列${value === 0 ? '空格' : `数字${value}`}`}
                     onClick={() => commit(selectKidCell(playRef.current, { row, col }))}
@@ -120,13 +169,49 @@ export function KidAdventureBoard({
         })}
       </div>
 
+      {!play.completed && (
+        <div className="flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
+          {play.feedback.value ? (
+            <div className="h-12 w-12 shrink-0">
+              <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
+            </div>
+          ) : null}
+          <p className="text-base font-black leading-6 text-cyan-950">{play.feedback.text}</p>
+        </div>
+      )}
+
+      {play.completed && (
+        <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
+          <div className="cheer-friends" aria-hidden="true">
+            {[1, 2, 3, 4].map((value) => (
+              <div key={value} className="cheer-friend">
+                <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-lg font-black text-emerald-950">四行、四列、四个小宫都齐了。</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button type="button" className="btn min-h-12 border border-emerald-300 bg-white" onClick={() => startLevel(play.levelId, true)}>
+              再玩一次
+            </button>
+            {nextLevelId ? (
+              <button type="button" className="btn btn-primary min-h-12" onClick={() => startLevel(nextLevelId, true)}>
+                下一关
+              </button>
+            ) : (
+              <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-4 gap-2">
         {[1, 2, 3, 4].map((value) => (
           <button
             key={`kid-picker-${value}`}
             type="button"
             className="btn h-16 min-h-16 border border-slate-200 bg-white px-1"
-            onClick={() => commit(placeKidNumber(playRef.current, value))}
+            onClick={() => placeFromPicker(value)}
             aria-label={`放入数字积木 ${value}`}
           >
             <span className="flex items-center justify-center gap-1">
@@ -154,7 +239,12 @@ export function KidAdventureBoard({
         <button
           type="button"
           className="btn min-h-12 border border-slate-200 bg-white font-black"
-          onClick={() => commit(undoKidPlay(playRef.current))}
+          onClick={() => {
+            const prev = playRef.current;
+            const next = undoKidPlay(prev);
+            commit(next);
+            if (prev.completed && !next.completed) cheers.stop();
+          }}
           disabled={play.past.length === 0}
         >
           撤销
@@ -181,42 +271,6 @@ export function KidAdventureBoard({
           >
             拿走
           </button>
-        </div>
-      )}
-
-      {!play.completed && (
-        <div className="flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
-          {play.feedback.value ? (
-            <div className="h-12 w-12 shrink-0">
-              <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
-            </div>
-          ) : null}
-          <p className="text-base font-bold leading-6 text-cyan-950">{play.feedback.text}</p>
-        </div>
-      )}
-
-      {play.completed && (
-        <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
-          <div className="cheer-friends" aria-hidden="true">
-            {[1, 2, 3, 4].map((value) => (
-              <div key={value} className="cheer-friend">
-                <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-base font-black text-emerald-950">四行、四列、四个小宫都齐了。</p>
-          <div className="mt-3 flex flex-wrap justify-center gap-2">
-            <button type="button" className="btn min-h-12 border border-emerald-300 bg-white" onClick={() => startLevel(play.levelId, true)}>
-              再玩一次
-            </button>
-            {nextLevelId ? (
-              <button type="button" className="btn btn-primary min-h-12" onClick={() => startLevel(nextLevelId, true)}>
-                下一关
-              </button>
-            ) : (
-              <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
-            )}
-          </div>
         </div>
       )}
 

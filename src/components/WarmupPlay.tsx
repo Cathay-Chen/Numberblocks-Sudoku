@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { cheers } from '../audio/celebration';
-import { shouldCelebrate } from '../kid-adventure/celebrate';
+import { cueForWarmup } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import {
   WARMUP_STATIONS,
@@ -38,7 +38,14 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           index={index}
           value={value}
           highlighted={highlights.has(index)}
-          onClick={() => setPlay((prev) => tapWarmupCell(prev, index))}
+          acked={placedHere(play, index, value)}
+          wrong={play.feedback.tone === 'conflict' && highlights.has(index)}
+          onClick={() => {
+            const prev = play;
+            const next = tapWarmupCell(prev, index);
+            setPlay(next);
+            playWarmupCue(prev, next);
+          }}
         />
       ))}
     </div>
@@ -50,7 +57,14 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           index={index}
           value={value}
           highlighted={highlights.has(index)}
-          onClick={() => setPlay((prev) => tapWarmupCell(prev, index))}
+          acked={placedHere(play, index, value)}
+          wrong={play.feedback.tone === 'conflict' && highlights.has(index)}
+          onClick={() => {
+            const prev = play;
+            const next = tapWarmupCell(prev, index);
+            setPlay(next);
+            playWarmupCue(prev, next);
+          }}
         />
       ))}
     </div>
@@ -82,7 +96,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
               const prev = play;
               const next = placeWarmupFriend(prev, value);
               setPlay(next);
-              if (shouldCelebrate(prev.cleared, next.cleared)) cheers.play('step');
+              playWarmupCue(prev, next);
             }}
           >
             <span className="mx-auto block h-12 w-12">
@@ -138,21 +152,46 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
   );
 }
 
+const placedHere = (
+  play: WarmupState,
+  index: number,
+  value: number
+) => (play.feedback.tone === 'found' || play.feedback.tone === 'done') && play.highlight.includes(index) && value !== 0;
+
+const playWarmupCue = (prev: WarmupState, next: WarmupState) => {
+  const cue = cueForWarmup({
+    beforeComplete: prev.cleared,
+    afterComplete: next.cleared,
+    tone: next.feedback.tone,
+  });
+  if (cue) cheers.play(cue);
+};
+
 function CellButton({
   index,
   value,
   highlighted,
+  acked,
+  wrong,
   onClick,
 }: {
   index: number;
   value: number;
   highlighted: boolean;
+  acked: boolean;
+  wrong: boolean;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
-      className={['warmup-cell', highlighted ? 'warmup-cell-hot' : '', value === 0 ? 'warmup-cell-empty' : ''].join(' ')}
+      className={[
+        'warmup-cell',
+        acked ? 'warmup-ack' : '',
+        wrong ? 'warmup-wrong warmup-bump' : '',
+        !acked && !wrong && highlighted ? 'warmup-cell-hot' : '',
+        value === 0 ? 'warmup-cell-empty' : '',
+      ].join(' ')}
       aria-label={value === 0 ? `空位 ${index + 1}` : `朋友 ${value}`}
       onClick={onClick}
     >

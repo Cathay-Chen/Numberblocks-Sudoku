@@ -92,6 +92,14 @@ export const selectKidCell = (play: KidPlay, cell: KidCell): KidPlay => ({
   selected: cell,
 });
 
+// 提示已经圈出一组、且里面只剩一个空位时，点数字就可以放进去。
+export const emptyFocusTarget = (play: KidPlay): KidCell | null => {
+  const empties = play.focus.filter(
+    (cell) => play.board[cell.row]?.[cell.col] === 0 && !play.givens[cell.row]?.[cell.col]
+  );
+  return empties.length === 1 ? empties[0] : null;
+};
+
 export const placeKidNumber = (play: KidPlay, value: number): KidPlay => {
   if (play.completed) return play;
   if (!play.selected) {

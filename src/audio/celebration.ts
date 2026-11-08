@@ -1,11 +1,35 @@
 import { sfx } from './sfx';
 
-const STEP_SRC = '/sfx/chinaz-correct.wav';
+const PLACE_SRC = '/sfx/correct.wav';
+const MISS_SRC = '/sfx/chinaz-wrong.wav';
 const BOARD_SRC = '/sfx/chinaz-win.wav';
-const STEP_LIMIT_MS = 700;
-const BOARD_LIMIT_MS = 1200;
+const PLACE_LIMIT_MS = 520;
+const MISS_LIMIT_MS = 500;
+const BOARD_LIMIT_MS = 1600;
+const BOARD_GAIN = 2.8;
 
-export type CelebrationKind = 'step' | 'board';
+let sharedContext: AudioContext | null = null;
+
+const boostBoard = (audio: CelebrationAudio) => {
+  if (typeof HTMLAudioElement === 'undefined' || !(audio instanceof HTMLAudioElement)) return;
+  const Ctx =
+    window.AudioContext ||
+    (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!Ctx) return;
+  try {
+    if (!sharedContext || sharedContext.state === 'closed') sharedContext = new Ctx();
+    void sharedContext.resume();
+    const source = sharedContext.createMediaElementSource(audio);
+    const gain = sharedContext.createGain();
+    gain.gain.value = BOARD_GAIN;
+    source.connect(gain);
+    gain.connect(sharedContext.destination);
+  } catch {
+    // 接不上增益时，元素仍走自己的输出。
+  }
+};
+
+export type CelebrationKind = 'place' | 'miss' | 'board';
 
 export type CelebrationAudio = {
   volume: number;
@@ -35,15 +59,18 @@ export class CelebrationSounds {
     this.stop();
     if (!sfx.feedbackAudible()) return;
     const generation = ++this.generation;
+    const src = kind === 'board' ? BOARD_SRC : kind === 'miss' ? MISS_SRC : PLACE_SRC;
+    const base = kind === 'board' ? 1 : kind === 'miss' ? 0.55 : 0.62;
     let audio: CelebrationAudio;
     try {
-      audio = this.createAudio(kind === 'board' ? BOARD_SRC : STEP_SRC);
+      audio = this.createAudio(src);
     } catch {
       return;
     }
-    audio.volume = sfx.scaledVolume(kind === 'board' ? 0.42 : 0.3);
+    audio.volume = sfx.scaledVolume(base);
+    if (kind === 'board') boostBoard(audio);
     this.current = audio;
-    const limit = kind === 'board' ? BOARD_LIMIT_MS : STEP_LIMIT_MS;
+    const limit = kind === 'board' ? BOARD_LIMIT_MS : kind === 'miss' ? MISS_LIMIT_MS : PLACE_LIMIT_MS;
     this.timer = globalThis.setTimeout(() => {
       if (generation !== this.generation) return;
       this.stop();

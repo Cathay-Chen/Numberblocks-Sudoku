@@ -232,8 +232,9 @@
   }
 
   .kid-cell {
-    @apply grid w-full place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-2xl font-black text-slate-800 transition-all;
+    @apply grid w-full place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-2xl font-black text-slate-800;
     aspect-ratio: 1 / 1;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
   .kid-cell-selected {
@@ -245,7 +246,44 @@
   }
 
   .kid-cell-wrong {
-    @apply border-rose-400 bg-rose-50 text-rose-700;
+    @apply border-rose-500 bg-rose-100 text-rose-700;
+    box-shadow: 0 0 0 6px #ef4444;
+  }
+
+  .kid-cell-ack,
+  .warmup-ack {
+    z-index: 2;
+    background: #ecfdf5;
+    box-shadow: 0 0 0 6px #16a34a;
+    animation: cell-ack 0.8s ease-out;
+  }
+
+  .kid-cell-bump,
+  .warmup-bump {
+    z-index: 2;
+    animation: cell-bump 0.55s ease-in-out;
+  }
+
+  .kid-cell-need {
+    z-index: 2;
+    box-shadow: 0 0 0 5px #f59e0b;
+    animation: cell-bump 0.55s ease-in-out;
+  }
+
+  .board-clear .kid-cell {
+    animation: cheer-hop 1.15s ease-out both;
+  }
+
+  .board-clear .kid-cell:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+
+  .board-clear .kid-cell:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+
+  .board-clear .kid-cell:nth-child(4) {
+    animation-delay: 0.24s;
   }
 
   .kid-cell-hint {
@@ -282,7 +320,16 @@
   }
 
   .warmup-cell-hot {
-    box-shadow: 0 0 0 3px #f59e0b;
+    box-shadow: 0 0 0 4px #f59e0b;
+  }
+
+  .warmup-cell.warmup-ack {
+    background-color: #ecfdf5;
+  }
+
+  .warmup-cell.warmup-wrong {
+    background-color: #ffe4e6;
+    box-shadow: 0 0 0 6px #ef4444;
   }
 
   .cheer-friends {
@@ -293,9 +340,9 @@
 
   .cheer-friend,
   .warmup-pop {
-    width: 3.5rem;
-    height: 3.5rem;
-    animation: cheer-hop 0.7s ease-out both;
+    width: 5.25rem;
+    height: 5.25rem;
+    animation: cheer-hop 1.15s ease-out both;
   }
 
   .cheer-friend:nth-child(2) {
@@ -312,19 +359,56 @@
 
   @keyframes cheer-hop {
     0% {
-      transform: translateY(8px) scale(0.92);
+      transform: translateY(18px) scale(0.72);
     }
-    45% {
-      transform: translateY(-10px) scale(1);
+    35% {
+      transform: translateY(-36px) scale(1.18);
     }
     100% {
       transform: translateY(0) scale(1);
     }
   }
 
+  @keyframes cell-ack {
+    0% {
+      transform: scale(0.82);
+    }
+    55% {
+      transform: scale(1.12);
+    }
+    100% {
+      transform: scale(1);
+    }
+  }
+
+  @keyframes cell-bump {
+    0%,
+    100% {
+      transform: translateX(0);
+    }
+    20% {
+      transform: translateX(-14px);
+    }
+    40% {
+      transform: translateX(12px);
+    }
+    60% {
+      transform: translateX(-8px);
+    }
+    80% {
+      transform: translateX(6px);
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .cheer-friend,
-    .warmup-pop {
+    .warmup-pop,
+    .warmup-ack,
+    .warmup-bump,
+    .board-clear .kid-cell,
+    .kid-cell-ack,
+    .kid-cell-bump,
+    .kid-cell-need {
       animation: none;
     }
   }
