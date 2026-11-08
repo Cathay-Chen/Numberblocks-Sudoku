@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createPuzzle, countSolutions, generateSolvedBoard } from '../src/sudoku/engine';
 import { createInitialState, getCandidates } from '../src/game/utils';
-import { applyHint, findConflicts } from '../src/sudoku/logic';
+import { classicHintLadder, findConflicts } from '../src/sudoku/logic';
 
 describe('sudoku engine', () => {
   it('generates a solved 9x9 board', () => {
@@ -37,16 +37,23 @@ describe('sudoku engine', () => {
     expect(conflicts.size).toBeGreaterThan(0);
   });
 
-  it('hint fills a correct empty cell', () => {
-    const { puzzle, solution } = createPuzzle('easy');
-    const givens = puzzle.map((row) => row.map((v) => v !== 0));
-    const board = puzzle.map((row) => row.slice());
-    const result = applyHint(board, solution, givens);
-    expect(result).not.toBeNull();
-    if (result) {
-      expect(board[result.row][result.col]).toBe(solution[result.row][result.col]);
-      expect(givens[result.row][result.col]).toBe(false);
-    }
+  it('hint explains the current board and does not fill a cell', () => {
+    const board = Array.from({ length: 9 }, () => Array(9).fill(0));
+    board[0][0] = 5;
+    board[0][3] = 5;
+    const before = board.map((row) => row.slice());
+    const steps = classicHintLadder(board);
+    expect(steps[0]).toContain('先看');
+    expect(steps[1]).toContain('两个 5');
+    expect(board).toEqual(before);
+
+    const almost = Array.from({ length: 9 }, () => Array(9).fill(0));
+    [1, 2, 3, 4, 5, 6, 7, 8].forEach((value, index) => {
+      almost[1][index] = value;
+    });
+    const ladder = classicHintLadder(almost);
+    expect(ladder[ladder.length - 1]).toBe('空位是 9。');
+    expect(almost[1][8]).toBe(0);
   });
 
   it('initial game state starts with mistake guard defaults', () => {
