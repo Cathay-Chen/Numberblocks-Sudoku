@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { cheers } from '../audio/celebration';
+import { shouldCelebrate } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import {
   WARMUP_STATIONS,
@@ -20,7 +22,13 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
   const station = WARMUP_STATIONS[play.stationIndex] ?? WARMUP_STATIONS[0];
   const highlights = new Set(play.highlight);
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+  useEffect(
+    () => () => {
+      window.speechSynthesis?.cancel();
+      cheers.stop();
+    },
+    []
+  );
 
   const cells = station.house === 'box' ? (
     <div className="kid-box warmup-box" aria-label="小宫">
@@ -70,7 +78,12 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
             type="button"
             className="btn min-h-20 border border-slate-200 bg-white px-1"
             aria-label={`放入数字积木 ${value}`}
-            onClick={() => setPlay((prev) => placeWarmupFriend(prev, value))}
+            onClick={() => {
+              const prev = play;
+              const next = placeWarmupFriend(prev, value);
+              setPlay(next);
+              if (shouldCelebrate(prev.cleared, next.cleared)) cheers.play('step');
+            }}
           >
             <span className="mx-auto block h-12 w-12">
               <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
@@ -90,14 +103,18 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           type="button"
           className="btn min-h-12 border border-slate-200 bg-white font-black"
           disabled={play.past.length === 0}
-          onClick={() => setPlay((prev) => undoWarmup(prev))}
+          onClick={() => {
+            const next = undoWarmup(play);
+            if (play.cleared && !next.cleared) cheers.stop();
+            setPlay(next);
+          }}
         >
           撤销
         </button>
       </div>
       <div className="mt-3 flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
         {play.feedback.value ? (
-          <div className="h-12 w-12 shrink-0">
+          <div className={['h-12 w-12 shrink-0', play.cleared ? 'warmup-pop' : ''].join(' ')}>
             <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
           </div>
         ) : null}
@@ -108,6 +125,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           type="button"
           className="btn btn-primary mt-3 min-h-14 w-full text-lg"
           onClick={() => {
+            cheers.stop();
             const next = advanceWarmup(play);
             if (next.finished) onDone();
             else setPlay(next);

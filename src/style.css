@@ -285,6 +285,50 @@
     box-shadow: 0 0 0 3px #f59e0b;
   }
 
+  .cheer-friends {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .cheer-friend,
+  .warmup-pop {
+    width: 3.5rem;
+    height: 3.5rem;
+    animation: cheer-hop 0.7s ease-out both;
+  }
+
+  .cheer-friend:nth-child(2) {
+    animation-delay: 0.08s;
+  }
+
+  .cheer-friend:nth-child(3) {
+    animation-delay: 0.16s;
+  }
+
+  .cheer-friend:nth-child(4) {
+    animation-delay: 0.24s;
+  }
+
+  @keyframes cheer-hop {
+    0% {
+      transform: translateY(8px) scale(0.92);
+    }
+    45% {
+      transform: translateY(-10px) scale(1);
+    }
+    100% {
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cheer-friend,
+    .warmup-pop {
+      animation: none;
+    }
+  }
+
   .fireworks-layer {
     @apply pointer-events-none absolute inset-0 overflow-hidden;
   }

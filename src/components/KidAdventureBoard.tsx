@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { cheers } from '../audio/celebration';
+import { shouldCelebrate } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import {
@@ -37,16 +39,28 @@ export function KidAdventureBoard({
     return greet ? greetLikeWarmup(started) : started;
   });
   const [moreTools, setMoreTools] = useState(false);
+  const playRef = useRef(play);
   const unlockedLevels = computeUnlockedLevels(totalStars);
   const story = buildLevelStory(play.levelId);
   const conflicts = conflictCells(play.board);
   const nextLevelId = play.levelId < KID_LEVELS.length ? play.levelId + 1 : null;
   const focusKeys = new Set(play.focus.map((cell) => `${cell.row}-${cell.col}`));
 
+  const commit = (next: KidPlay) => {
+    const prev = playRef.current;
+    playRef.current = next;
+    setPlay(next);
+    if (shouldCelebrate(prev.completed, next.completed)) cheers.play('board');
+    if (prev.completed && !next.completed) cheers.stop();
+  };
+
   const startLevel = (levelId: number, force = false) => {
     if (!force && levelId > unlockedLevels) return;
     window.speechSynthesis?.cancel();
-    setPlay(createKidPlay(levelId));
+    cheers.stop();
+    const next = createKidPlay(levelId);
+    playRef.current = next;
+    setPlay(next);
   };
 
   useEffect(() => {
@@ -54,7 +68,13 @@ export function KidAdventureBoard({
     onEarnStars(play.levelId, KID_CLEAR_STARS);
   }, [play.completed, play.levelId]);
 
-  useEffect(() => () => window.speechSynthesis?.cancel(), []);
+  useEffect(
+    () => () => {
+      window.speechSynthesis?.cancel();
+      cheers.stop();
+    },
+    []
+  );
 
   return (
     <section className="grid gap-4">
@@ -87,7 +107,7 @@ export function KidAdventureBoard({
                       focusKeys.has(key) ? 'kid-cell-hint' : '',
                     ].join(' ')}
                     aria-label={`第${row + 1}行第${col + 1}列${value === 0 ? '空格' : `数字${value}`}`}
-                    onClick={() => setPlay((prev) => selectKidCell(prev, { row, col }))}
+                    onClick={() => commit(selectKidCell(playRef.current, { row, col }))}
                   >
                     {value !== 0 && (
                       <NumberBlock value={value} size="cell" given={play.givens[row][col]} imageAlt={`数字积木 ${value}`} />
@@ -106,7 +126,7 @@ export function KidAdventureBoard({
             key={`kid-picker-${value}`}
             type="button"
             className="btn h-16 min-h-16 border border-slate-200 bg-white px-1"
-            onClick={() => setPlay((prev) => placeKidNumber(prev, value))}
+            onClick={() => commit(placeKidNumber(playRef.current, value))}
             aria-label={`放入数字积木 ${value}`}
           >
             <span className="flex items-center justify-center gap-1">
@@ -123,7 +143,7 @@ export function KidAdventureBoard({
         <button
           type="button"
           className="btn min-h-12 border border-amber-300 bg-amber-50 font-black text-amber-950"
-          onClick={() => setPlay((prev) => hintKidPlay(prev))}
+          onClick={() => commit(hintKidPlay(playRef.current))}
           disabled={play.completed}
         >
           看一步
@@ -134,13 +154,13 @@ export function KidAdventureBoard({
         <button
           type="button"
           className="btn min-h-12 border border-slate-200 bg-white font-black"
-          onClick={() => setPlay((prev) => undoKidPlay(prev))}
+          onClick={() => commit(undoKidPlay(playRef.current))}
           disabled={play.past.length === 0}
         >
           撤销
         </button>
       </div>
-      <button type="button" className="btn btn-ghost btn-sm justify-self-start" onClick={() => setMoreTools((open) => !open)}>
+      <button type="button" className="btn btn-ghost min-h-11 justify-self-start px-4" onClick={() => setMoreTools((open) => !open)}>
         {moreTools ? '收起' : '更多'}
       </button>
       {moreTools && (
@@ -148,7 +168,7 @@ export function KidAdventureBoard({
           <button
             type="button"
             className="btn min-h-12 border border-slate-200 bg-white font-black"
-            onClick={() => setPlay((prev) => redoKidPlay(prev))}
+            onClick={() => commit(redoKidPlay(playRef.current))}
             disabled={play.future.length === 0}
           >
             重做
@@ -156,7 +176,7 @@ export function KidAdventureBoard({
           <button
             type="button"
             className="btn min-h-12 border border-slate-200 bg-white font-black"
-            onClick={() => setPlay((prev) => clearKidCell(prev))}
+            onClick={() => commit(clearKidCell(playRef.current))}
             disabled={play.completed}
           >
             拿走
@@ -164,29 +184,43 @@ export function KidAdventureBoard({
         </div>
       )}
 
-      <div className="flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
-        {play.feedback.value ? (
-          <div className="h-12 w-12 shrink-0">
-            <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
-          </div>
-        ) : null}
-        <p className="text-base font-bold leading-6 text-cyan-950">{play.feedback.text}</p>
-      </div>
-
-      {play.completed && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-center">
-          <p className="text-base font-black text-emerald-900">这一关补齐了</p>
-          {nextLevelId ? (
-            <button type="button" className="btn btn-primary mt-3 min-h-12" onClick={() => startLevel(nextLevelId, true)}>
-              下一关
-            </button>
-          ) : (
-            <p className="mt-2 text-sm font-bold text-emerald-800">六关都玩过啦，可以再挑一关。</p>
-          )}
+      {!play.completed && (
+        <div className="flex items-center gap-3 rounded-xl bg-cyan-50 px-3 py-3" aria-live="polite">
+          {play.feedback.value ? (
+            <div className="h-12 w-12 shrink-0">
+              <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
+            </div>
+          ) : null}
+          <p className="text-base font-bold leading-6 text-cyan-950">{play.feedback.text}</p>
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2">
+      {play.completed && (
+        <div className="rounded-2xl bg-emerald-50 px-4 py-3 text-center">
+          <div className="cheer-friends" aria-hidden="true">
+            {[1, 2, 3, 4].map((value) => (
+              <div key={value} className="cheer-friend">
+                <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-base font-black text-emerald-950">四行、四列、四个小宫都齐了。</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2">
+            <button type="button" className="btn min-h-12 border border-emerald-300 bg-white" onClick={() => startLevel(play.levelId, true)}>
+              再玩一次
+            </button>
+            {nextLevelId ? (
+              <button type="button" className="btn btn-primary min-h-12" onClick={() => startLevel(nextLevelId, true)}>
+                下一关
+              </button>
+            ) : (
+              <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div className="flex items-center justify-center gap-2" aria-label="进度">
         {KID_LEVELS.map((level) => {
           const locked = level.id > unlockedLevels;
           const stars = levelStars[level.id - 1] ?? 0;
@@ -196,19 +230,19 @@ export function KidAdventureBoard({
               type="button"
               disabled={locked}
               className={[
-                'kid-map-level min-h-16 rounded-xl border p-2 text-left',
-                play.levelId === level.id ? 'border-sky-500 bg-sky-50' : 'border-slate-200 bg-white',
-                locked ? 'cursor-not-allowed opacity-45' : '',
+                'h-11 w-11 rounded-full border-2 text-sm font-black',
+                play.levelId === level.id ? 'border-sky-600 bg-sky-500 text-white' : 'border-slate-300 bg-white text-slate-700',
+                locked ? 'cursor-not-allowed opacity-40' : '',
               ].join(' ')}
+              aria-label={`${level.name}${locked ? ' 还没打开' : stars > 0 ? ' 已完成' : ' 可以玩'}`}
               onClick={() => startLevel(level.id)}
             >
-              <p className="font-display text-lg text-slate-900">{level.name}</p>
-              <p className="text-xs text-amber-700">{locked ? '还没打开' : stars > 0 ? `⭐ ${stars}` : '可以玩'}</p>
+              {level.id}
             </button>
           );
         })}
       </div>
-      <button type="button" className="btn btn-ghost btn-sm justify-self-start" onClick={onReplayWarmup}>
+      <button type="button" className="btn btn-ghost min-h-11 justify-self-start px-4" onClick={onReplayWarmup}>
         再找一次朋友
       </button>
     </section>

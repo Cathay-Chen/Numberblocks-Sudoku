@@ -215,6 +215,31 @@ PR 1 当时仍打开、未合并、没有 CI 检查。这一轮继续在同一�
 
 验证见本轮测试、构建和截图。没有儿童测试。
 
+## 2026-11-08 完成反馈与画面焦点
+
+用户在预览里指出过关没有激励。先看了低龄产品的完成方式，再改，不在旧画面上只加彩带。
+
+### 实际看到的
+
+- [Code.org Pre-reader Express 第 1 关](https://studio.code.org/courses/pre-express-2025/units/1/lessons/1/levels/1)：免登录点开。指令只有 “Click the block”，苹果块很大，旁边有朗读按钮。点中后出现 “Congratulations! You completed Puzzle 1.”，苹果还在卡片里，Continue 马上可点。进度是一排圆点。弹层会挡住原来的工作区，这一层不照搬。有没有声音没有听，不把静音浏览器里的成功当成听到了。
+- [BBC 儿童设计说明](https://www.bbc.co.uk/gel/features/how-to-design-for-children-2) 和 [触控尺寸](https://www.bbc.co.uk/accessibility/forproducts/guides/mobile/target-touch-size)：文档，不是操作。要点是少文字、一个焦点、错误也可以被鼓励、声音帮助确认、触控大约 44px 以上，儿童稿建议更大。
+- [WCAG 2.2 目标尺寸](https://www.w3.org/WAI/WCAG22/Understanding/target-size-minimum.html)：文档。最小 24px，并允许间距例外。
+- CBeebies Numberblocks 游戏页接受饼干后落到节目首页，没有进入那一款游戏。PBS Kids 只看到游戏目录，没有点进一局。这两处的完成反馈标为未知。
+- 此前 inSudoku、Sudoku Exchange 的提示已经操作过。它们的整局完成画面这次没有打到。
+
+### 自己的画面问题
+
+儿童 4×4 完成时只有「这一关补齐了」和下一关，没有角色，也没有接到音效。音效代码只在经典落子里。准备小任务同样只有文字。关卡名卡片和两段说明挤在棋盘下面，任务不是唯一焦点。「更多」「再找一次朋友」偏小。静音要进家长菜单。
+
+### 这次改的范围
+
+- 整盘完成：四个朋友短跳，句子是四行、四列、四个小宫都齐了。下一关和再玩一次立刻可点，不盖住棋盘，不等动画。
+- 准备完成：只让刚放好的那一个朋友轻跳，声音更短。不是每放一块都庆祝。
+- 声音用仓库里已有的短音效，在点击里播放，静音偏好沿用原来的设置并出现在儿童页。系统要求减少动画时不跳。
+- 六关进度改成圆点，名字留在读屏标签里。
+
+续玩和经典提示仍不做。没有儿童测试。音效没有人耳听过。
+
 - `/opt/cursor/artifacts/43-exchange-hint-2.png`
 - `/opt/cursor/artifacts/51-insudoku-coach-1.png`
 - `/opt/cursor/artifacts/58-insudoku-clean-coach.png`

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { cheers } from './audio/celebration';
 import { sfx } from './audio/sfx';
 import { ActionControls } from './components/ActionControls';
 import { GameHeader } from './components/GameHeader';
@@ -110,9 +111,22 @@ export default function App() {
       <div className="sudoku-shell min-h-screen">
         <header className="mx-auto flex w-[min(720px,94vw)] items-center justify-between px-1 py-4">
           <p className="rounded-full bg-white/80 px-3 py-1 text-sm font-black text-amber-700">⭐ {state.stars}</p>
-          <button type="button" className="btn btn-ghost btn-sm font-bold text-slate-500" onClick={() => setParentOpen(true)}>
-            家长
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              className="btn btn-ghost min-h-11 font-bold text-slate-600"
+              aria-pressed={audioSettings.feedbackEnabled}
+              onClick={() => {
+                cheers.stop();
+                setAudioSettings((prev) => ({ ...prev, feedbackEnabled: !prev.feedbackEnabled }));
+              }}
+            >
+              {audioSettings.feedbackEnabled ? '声音开' : '静音'}
+            </button>
+            <button type="button" className="btn btn-ghost min-h-11 font-bold text-slate-500" onClick={() => setParentOpen(true)}>
+              家长
+            </button>
+          </div>
         </header>
         <main className="mx-auto w-[min(720px,94vw)] pb-10">
           {showWarmup ? (
