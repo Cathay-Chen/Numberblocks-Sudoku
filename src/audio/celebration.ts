@@ -138,12 +138,11 @@ export class CelebrationSounds {
       node.connect(gain);
       gain.connect(sharedContext.destination);
       const offset = Math.min(plan.startSec, Math.max(0, buffer.duration - 0.05));
+      node.onended = () => {
+        if (this.node === node) this.node = null;
+      };
       node.start(0, offset);
       this.node = node;
-      this.timer = globalThis.setTimeout(() => {
-        if (generation !== this.generation) return;
-        this.stop();
-      }, plan.playMs + 40);
     } catch {
       if (generation === this.generation) this.playElement(kind, generation);
     }
