@@ -1,3 +1,5 @@
+import type { LearningRecord } from '../kid-adventure/learning';
+
 export type Difficulty = 'easy' | 'medium' | 'hard';
 export type ExperienceMode = 'classic' | 'kid';
 
@@ -29,6 +31,7 @@ export type GameState = {
   correctStreak: number;
   kidLevelStars: number[];
   warmupDone: boolean;
+  learning: LearningRecord | null;
   voiceGuideEnabled: boolean;
   hintText: string;
   elapsedSeconds: number;

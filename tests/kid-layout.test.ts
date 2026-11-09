@@ -14,6 +14,12 @@ describe('kid adventure layout', () => {
     expect(css).toMatch(/\.kid-box\s*{[\s\S]*border:\s*3px solid #0f172a/);
   });
 
+  it('lets the four celebration friends shrink inside a 320px card', () => {
+    const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.cheer-friends\s*{[^}]*min-width:\s*0/);
+    expect(css).toMatch(/\.cheer-friend\s*{[^}]*min\(5\.25rem,\s*calc\(\(100% - 1\.5rem\) \/ 4\)\)/);
+  });
+
   it('wraps the level dots so a 320px screen is not forced wider', () => {
     const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
     expect(css).toMatch(/\.kid-levels\s*{[^}]*flex-wrap:\s*wrap/);

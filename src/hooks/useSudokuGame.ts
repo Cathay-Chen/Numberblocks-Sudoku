@@ -15,7 +15,8 @@ import {
   getCandidates,
   isComplete,
 } from '../game/utils';
-import { loadKidProgress, resolveWarmupDone, saveKidProgress } from '../kid-adventure/progression';
+import { recordAttempt, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
+import { loadKidProgress, progressCanBeReplaced, resolveWarmupDone, saveKidProgress } from '../kid-adventure/progression';
 
 type Snapshot = {
   board: number[][];
@@ -51,6 +52,7 @@ const createBootState = (): GameState => {
     stars: progress.stars,
     kidLevelStars: normalizeKidLevelStars(progress.levelStars),
     warmupDone: resolveWarmupDone(progress),
+    learning: progress.learning ?? null,
   };
 };
 
@@ -59,6 +61,7 @@ const carryKidRecord = (prev: GameState, next: GameState): GameState => ({
   stars: prev.stars,
   kidLevelStars: prev.kidLevelStars.slice(),
   warmupDone: prev.warmupDone,
+  learning: prev.learning,
   voiceGuideEnabled: prev.voiceGuideEnabled,
 });
 
@@ -81,6 +84,7 @@ export function useSudokuGame() {
   const hintStepRef = useRef(0);
   const futureRef = useRef<Snapshot[]>([]);
   const progressReadyRef = useRef(false);
+  const progressSaveArmed = useRef(false);
 
   useEffect(() => {
     if (state.experienceMode === 'kid' || state.completed || state.failed) return;
@@ -102,12 +106,17 @@ export function useSudokuGame() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!progressReadyRef.current) return;
+    if (!progressSaveArmed.current) {
+      progressSaveArmed.current = true;
+      if (!progressCanBeReplaced(window.localStorage)) return;
+    }
     saveKidProgress(window.localStorage, {
       stars: state.stars,
       levelStars: state.kidLevelStars,
       warmupDone: state.warmupDone,
+      learning: state.learning ?? undefined,
     });
-  }, [state.stars, state.kidLevelStars, state.warmupDone]);
+  }, [state.stars, state.kidLevelStars, state.warmupDone, state.learning]);
 
   const actionLabel = useMemo(
     () => (state.notesMode ? '备注模式: 开' : '备注模式: 关'),
@@ -509,6 +518,22 @@ export function useSudokuGame() {
     setState((prev) => (prev.warmupDone ? prev : { ...prev, warmupDone: true }));
   };
 
+  const recordLesson = (id: string, activity: LearningActivity) => {
+    setState((prev) => {
+      const current = prev.learning?.activities[id];
+      if (
+        current &&
+        current.done === activity.done &&
+        current.hints === activity.hints &&
+        current.mistakes === activity.mistakes
+      ) {
+        return prev;
+      }
+      const learning: LearningRecord = recordAttempt(prev.learning, id, activity);
+      return { ...prev, learning };
+    });
+  };
+
   const updateKidLevelStars = (levelId: number, starsEarned: number) => {
     setState((prev) => {
       const index = levelId - 1;
@@ -538,6 +563,7 @@ export function useSudokuGame() {
     placeNumberFromDrag,
     newGame,
     updateKidLevelStars,
+    recordLesson,
     markWarmupDone,
     enterKidExperience,
     enterClassicExperience,

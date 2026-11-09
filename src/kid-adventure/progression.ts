@@ -1,17 +1,27 @@
+import { readLearning, type LearningRecord } from './learning';
+
 export const KID_PROGRESS_KEY = 'numberblocks.kid-progress.v1';
+export const KID_PROGRESS_BACKUP_KEY = 'numberblocks.kid-progress.v1.bak';
 
 export type KidProgress = {
   stars: number;
   levelStars: number[];
   warmupDone?: boolean;
+  learning?: LearningRecord;
 };
 
 type ReadonlyStorage = {
   getItem: (key: string) => string | null;
+  setItem?: (key: string, value: string) => void;
 };
 
 type WritableStorage = ReadonlyStorage & {
   setItem: (key: string, value: string) => void;
+};
+
+const backupUnreadable = (storage: ReadonlyStorage, raw: string) => {
+  if (!storage.setItem || storage.getItem(KID_PROGRESS_BACKUP_KEY)) return;
+  storage.setItem(KID_PROGRESS_BACKUP_KEY, raw);
 };
 
 type Story = {
@@ -56,9 +66,25 @@ export const loadKidProgress = (storage: ReadonlyStorage): KidProgress | null =>
   try {
     const raw = storage.getItem(KID_PROGRESS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<KidProgress>;
-    if (!Array.isArray(parsed.levelStars)) return null;
-    if (typeof parsed.stars !== 'number') return null;
+    let parsed: Partial<KidProgress> & { learning?: unknown };
+    try {
+      parsed = JSON.parse(raw) as Partial<KidProgress>;
+    } catch {
+      backupUnreadable(storage, raw);
+      return null;
+    }
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      backupUnreadable(storage, raw);
+      return null;
+    }
+    if (!Array.isArray(parsed.levelStars) || !parsed.levelStars.every((item) => typeof item === 'number' && Number.isFinite(item))) {
+      backupUnreadable(storage, raw);
+      return null;
+    }
+    if (typeof parsed.stars !== 'number' || !Number.isFinite(parsed.stars)) {
+      backupUnreadable(storage, raw);
+      return null;
+    }
     const progress: KidProgress = {
       stars: parsed.stars,
       levelStars: parsed.levelStars,
@@ -66,18 +92,41 @@ export const loadKidProgress = (storage: ReadonlyStorage): KidProgress | null =>
     if (parsed.warmupDone === true || parsed.warmupDone === false) {
       progress.warmupDone = parsed.warmupDone;
     }
+    const learning = readLearning(parsed.learning);
+    if (learning) progress.learning = learning;
     return progress;
   } catch {
     return null;
   }
 };
 
+// 读得出的档可以覆盖。空键也可以新建。读不出时留下原文，避免写成 0 星。
+export const progressCanBeReplaced = (storage: ReadonlyStorage): boolean => {
+  const raw = storage.getItem(KID_PROGRESS_KEY);
+  if (!raw) return true;
+  return loadKidProgress(storage) !== null;
+};
+
 export const saveKidProgress = (storage: WritableStorage, progress: KidProgress) => {
-  const stored: KidProgress = {
+  let carried: unknown;
+  try {
+    const existingRaw = storage.getItem(KID_PROGRESS_KEY);
+    if (existingRaw && !progress.learning) {
+      const existing = JSON.parse(existingRaw) as { learning?: { v?: unknown } };
+      if (existing?.learning && typeof existing.learning === 'object' && existing.learning.v !== 1) {
+        carried = existing.learning;
+      }
+    }
+  } catch {
+    carried = undefined;
+  }
+  const stored: Record<string, unknown> = {
     stars: progress.stars,
     levelStars: progress.levelStars,
   };
   if (typeof progress.warmupDone === 'boolean') stored.warmupDone = progress.warmupDone;
+  if (progress.learning) stored.learning = progress.learning;
+  else if (carried !== undefined) stored.learning = carried;
   storage.setItem(KID_PROGRESS_KEY, JSON.stringify(stored));
 };
 
