@@ -1,5 +1,6 @@
 import { coachLadder } from './coach';
 import { createKidLevelState } from './engine';
+import { lessonById } from './lessons';
 import {
   cloneKidBoard,
   conflictForPlacement,
@@ -28,6 +29,9 @@ export type KidPlay = {
   past: number[][][];
   future: number[][][];
   tried: number;
+  hintsUsed: number;
+  lessonId: string | null;
+  placeText: string;
   completed: boolean;
   feedback: KidFeedback;
   focus: KidCell[];
@@ -36,6 +40,9 @@ export type KidPlay = {
 };
 
 const idle = (text: string): KidFeedback => ({ tone: 'idle', text, value: null });
+
+const PATH_PLACE_TEXT = '放好了。再找只剩一个空位的地方。';
+const LESSON_PLACE_TEXT = '放好了。';
 
 const remember = (play: KidPlay): Pick<KidPlay, 'past' | 'future'> => {
   const past = [...play.past, cloneKidBoard(play.board)];
@@ -79,6 +86,32 @@ export const createKidPlay = (levelId: number): KidPlay => {
     past: [],
     future: [],
     tried: 0,
+    hintsUsed: 0,
+    lessonId: null,
+    placeText: PATH_PLACE_TEXT,
+    completed: false,
+    feedback: idle('点一个空格，再点积木。'),
+    focus: [],
+    coachKey: '',
+    coachStep: 0,
+  };
+};
+
+export const createLessonPlay = (lessonId: string): KidPlay | null => {
+  const lesson = lessonById(lessonId);
+  if (!lesson) return null;
+  const board = lesson.puzzle.map((row) => row.slice());
+  return {
+    levelId: 0,
+    lessonId: lesson.id,
+    board,
+    givens: board.map((row) => row.map((value) => value !== 0)),
+    selected: null,
+    past: [],
+    future: [],
+    tried: 0,
+    hintsUsed: 0,
+    placeText: LESSON_PLACE_TEXT,
     completed: false,
     feedback: idle('点一个空格，再点积木。'),
     focus: [],
@@ -154,7 +187,7 @@ export const placeKidNumber = (play: KidPlay, value: number): KidPlay => {
     completed: false,
     feedback: {
       tone: 'placed',
-      text: '放好了。再找只剩一个空位的地方。',
+      text: play.placeText,
       value,
     },
   };
@@ -205,7 +238,7 @@ export const clearKidCell = (play: KidPlay): KidPlay => {
   };
 };
 
-// 提示只看当前盘：先重复，再走不通的空格，再找只剩一个空位的一组。
+// 提示只看当前盘：先重复，再走不通的空格，再一组只剩一个空位，最后才是某个朋友只剩一个座位。
 const boardKey = (board: number[][]) => board.map((row) => row.join('')).join('|');
 
 export const hintKidPlay = (play: KidPlay): KidPlay => {
@@ -216,6 +249,7 @@ export const hintKidPlay = (play: KidPlay): KidPlay => {
   const step = ladder[index];
   return {
     ...play,
+    hintsUsed: play.hintsUsed + 1,
     coachKey: key,
     coachStep: index + 1 < ladder.length ? index + 1 : index,
     selected: step.focus ?? play.selected,

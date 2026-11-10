@@ -46,6 +46,7 @@ describe('staged coach', () => {
     expect(ladder[0].text).toContain('2');
     expect(ladder[1].value).toBeNull();
     expect(ladder[1].text).toContain('已经有 2');
+    expect(ladder[1].text).toContain('挡住了');
     expect(ladder[2].value).toBe(2);
     expect(ladder[2].focus).toEqual({ row: 0, col: 2 });
   });

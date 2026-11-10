@@ -180,27 +180,28 @@ const onlySeatLadder = (board: number[][], seat: OnlySeat): CoachStep[] => {
   ];
 };
 
+// 第二步圈住挡住的那一行或那一列，座位留到最后一句。
 const blockingReason = (
   board: number[][],
   seat: OnlySeat
 ): { text: string; cells: KidCell[] } => {
-  const groups = new Map<string, { label: string; cells: KidCell[]; holder: KidCell }>();
+  const groups = new Map<string, { label: string; cells: KidCell[]; hits: number }>();
   for (const cell of seat.blocked) {
     for (const house of housesTouching(cell.row, cell.col)) {
       if (house.kind === seat.houseKind && house.index === seat.houseIndex) continue;
-      const holder = house.cells.find((item) => board[item.row][item.col] === seat.digit);
-      if (!holder) continue;
+      const holdsDigit = house.cells.some((item) => board[item.row][item.col] === seat.digit);
+      if (!holdsDigit) continue;
       const key = `${house.kind}-${house.index}`;
-      const group = groups.get(key) ?? { label: houseLabel(house.kind), cells: [], holder };
-      if (!group.cells.some((item) => sameCell(item, cell))) group.cells.push(cell);
+      const group = groups.get(key) ?? { label: houseLabel(house.kind), cells: house.cells, hits: 0 };
+      group.hits += 1;
       groups.set(key, group);
       break;
     }
   }
-  const best = [...groups.values()].sort((left, right) => right.cells.length - left.cells.length)[0];
+  const best = [...groups.values()].sort((left, right) => right.hits - left.hits)[0];
   if (!best) return { text: '其他空格都不能放。', cells: seat.blocked };
   return {
-    text: `${best.label}已经有 ${seat.digit}。`,
-    cells: [...best.cells, best.holder],
+    text: `${best.label}已经有 ${seat.digit}，挡住了。`,
+    cells: best.cells,
   };
 };

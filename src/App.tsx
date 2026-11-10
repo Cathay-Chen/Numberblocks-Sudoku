@@ -10,6 +10,7 @@ import { SudokuBoard } from './components/SudokuBoard';
 import { TipBanner } from './components/TipBanner';
 import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
+import { lessonParentLines } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
 
 type AudioSettings = {
@@ -31,6 +32,7 @@ export default function App() {
     placeNumberFromDrag,
     newGame,
     updateKidLevelStars,
+    recordLesson,
     markWarmupDone,
     enterKidExperience,
     enterClassicExperience,
@@ -146,17 +148,26 @@ export default function App() {
               key={greetBoard ? 'greet' : 'board'}
               totalStars={state.stars}
               levelStars={state.kidLevelStars}
+              learning={state.learning}
               greet={greetBoard}
               onEarnStars={updateKidLevelStars}
+              onLessonAttempt={recordLesson}
               onReplayWarmup={() => setReplayWarmup(true)}
             />
           )}
         </main>
         {parentOpen && (
           <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/40 p-4 sm:place-items-center">
-            <div className="card w-full max-w-sm border border-slate-200 bg-white shadow-2xl">
+            <div className="card max-h-[90vh] w-full max-w-sm overflow-y-auto border border-slate-200 bg-white shadow-2xl">
               <div className="card-body">
                 <h2 className="font-display text-3xl text-slate-900">家长</h2>
+                <div className="space-y-1 text-sm font-bold leading-6 text-slate-800">
+                  <p>学习记录不记时间，也不按年龄。</p>
+                  <p>原来的六关：{state.kidLevelStars.filter((stars) => stars > 0).length} 关有星星。</p>
+                  {lessonParentLines(state.learning).map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
                 <button type="button" className="btn btn-outline min-h-12" onClick={openClassic}>
                   经典数独
                 </button>
@@ -251,6 +262,7 @@ function Guide({ onClose }: { onClose: () => void }) {
           <div className="space-y-2 text-sm text-slate-700">
             <p>小朋友先找少了的朋友、两个一样的朋友，再进入 4×4 小草地。</p>
             <p>每一行、每一列、每一小宫都要有 1、2、3、4。放重复了会指出那一组，可以撤销再试。</p>
+            <p>六关之后，学一个朋友只剩一个座位。看一步先指出朋友和那一组，再说谁挡住了。</p>
             <p>经典数独在「家长」里，仍是 9×9，错误达到上限会结束这一局。</p>
           </div>
           <div className="mt-3 flex justify-end">

@@ -3,10 +3,14 @@ import { cheers } from '../audio/celebration';
 import { cueForMove } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
+import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
+import { continuation, lessonById, nextLessonStep, pathIsClear } from '../kid-adventure/lessons';
+import { chooseOpening } from '../kid-adventure/opening';
 import {
   KID_CLEAR_STARS,
   clearKidCell,
   createKidPlay,
+  createLessonPlay,
   greetLikeWarmup,
   hintKidPlay,
   emptyFocusTarget,
@@ -24,28 +28,34 @@ import { NumberBlock } from './NumberBlock';
 type KidAdventureBoardProps = {
   totalStars: number;
   levelStars: number[];
+  learning: LearningRecord | null;
   greet: boolean;
   onEarnStars: (levelId: number, stars: number) => void;
+  onLessonAttempt: (id: string, activity: LearningActivity) => void;
   onReplayWarmup: () => void;
 };
 
 export function KidAdventureBoard({
   totalStars,
   levelStars,
+  learning,
   greet,
   onEarnStars,
+  onLessonAttempt,
   onReplayWarmup,
 }: KidAdventureBoardProps) {
   const [play, setPlay] = useState<KidPlay>(() => {
     const saved = typeof window === 'undefined' ? null : loadKidSession(window.localStorage);
-    const unlocked = computeUnlockedLevels(totalStars);
-    const resume = selectResumeLevel(totalStars, levelStars);
-    const levelId = saved && saved.levelId <= unlocked ? saved.levelId : resume;
-    const started = createKidPlay(levelId);
-    if (saved && saved.levelId === started.levelId && saved.past.length > 0) {
-      return restoreKidPlay(started, saved);
+    const opening = chooseOpening({ totalStars, levelStars, saved, learning });
+    if (opening.kind === 'lesson') {
+      const started = createLessonPlay(opening.id) ?? createKidPlay(1);
+      if (opening.restore && saved) return restoreKidPlay(started, saved);
+      return started;
     }
-    return greet && levelId === resume ? greetLikeWarmup(started) : started;
+    const started = createKidPlay(opening.levelId);
+    if (opening.restore && saved && saved.levelId === started.levelId) return restoreKidPlay(started, saved);
+    const resume = selectResumeLevel(totalStars, levelStars);
+    return greet && opening.levelId === resume ? greetLikeWarmup(started) : started;
   });
   const [moreTools, setMoreTools] = useState(false);
   const [pulse, setPulse] = useState<{ key: string; kind: 'place' | 'miss' } | null>(null);
@@ -55,6 +65,14 @@ export function KidAdventureBoard({
   const guideTimer = useRef(0);
   const unlockedLevels = computeUnlockedLevels(totalStars);
   const story = buildLevelStory(play.levelId);
+  const lesson = play.lessonId ? lessonById(play.lessonId) : null;
+  const task = lesson?.voiceText ?? story.voiceText;
+  const sixReady =
+    pathIsClear(levelStars) ||
+    (play.completed && !play.lessonId && play.levelId === 6 && levelStars.slice(0, 5).every((stars) => stars > 0));
+  const forward = sixReady ? continuation(learning) : null;
+  const lessonNext = play.lessonId ? nextLessonStep(play.lessonId) : null;
+  const soloLine = play.lessonId && play.completed ? kidSoloLine(play.hintsUsed) : null;
   const conflicts = conflictCells(play.board);
   const nextLevelId = play.levelId < KID_LEVELS.length ? play.levelId + 1 : null;
   const focusKeys = new Set(play.focus.map((cell) => `${cell.row}-${cell.col}`));
@@ -101,23 +119,37 @@ export function KidAdventureBoard({
     if (cue === 'miss' && next.focus[0]) markPulse(`${next.focus[0].row}-${next.focus[0].col}`, 'miss');
   };
 
-  const startLevel = (levelId: number, force = false) => {
-    if (!force && levelId > unlockedLevels) return;
+  const startFresh = (next: KidPlay) => {
     window.speechSynthesis?.cancel();
     cheers.stop();
     window.clearTimeout(pulseTimer.current);
     window.clearTimeout(guideTimer.current);
     setPulse(null);
     setGuideEmpties(false);
-    const next = createKidPlay(levelId);
     playRef.current = next;
     setPlay(next);
   };
 
+  const startLevel = (levelId: number, force = false) => {
+    if (!force && levelId > unlockedLevels) return;
+    startFresh(createKidPlay(levelId));
+  };
+
+  const startLesson = (lessonId: string) => {
+    const next = createLessonPlay(lessonId);
+    if (!next) return;
+    startFresh(next);
+  };
+
   useEffect(() => {
-    if (!play.completed) return;
+    if (!play.completed || play.lessonId) return;
     onEarnStars(play.levelId, KID_CLEAR_STARS);
-  }, [play.completed, play.levelId]);
+  }, [play.completed, play.levelId, play.lessonId]);
+
+  useEffect(() => {
+    if (!play.completed || !play.lessonId) return;
+    onLessonAttempt(play.lessonId, { hints: play.hintsUsed, mistakes: play.tried, done: true });
+  }, [play.completed, play.lessonId, play.hintsUsed, play.tried, onLessonAttempt]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -136,7 +168,7 @@ export function KidAdventureBoard({
 
   return (
     <section className="kid-card">
-      <h2 className="kid-task">{story.voiceText}</h2>
+      <h2 className="kid-task">{task}</h2>
 
                 <div className={['kid-grid', play.completed ? 'board-clear' : ''].join(' ')} aria-label="四宫数独">
         {[0, 1, 2, 3].map((box) => {
@@ -200,14 +232,30 @@ export function KidAdventureBoard({
             ))}
           </div>
           <p className="text-lg font-black text-emerald-950">四行、四列、四个小宫都齐了。</p>
-          {nextLevelId ? (
+          {soloLine ? <p className="text-sm font-bold text-emerald-800">{soloLine}</p> : null}
+          {lessonNext ? (
+            <button type="button" className="kid-go" onClick={() => startLesson(lessonNext.id)}>
+              {lessonNext.label}
+            </button>
+          ) : nextLevelId ? (
             <button type="button" className="kid-go" onClick={() => startLevel(nextLevelId, true)}>
               下一关
             </button>
+          ) : forward ? (
+            <>
+              <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
+              <button type="button" className="kid-go" onClick={() => startLesson(forward.id)}>
+                {forward.label}
+              </button>
+            </>
           ) : (
             <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
           )}
-          <button type="button" className="kid-again" onClick={() => startLevel(play.levelId, true)}>
+          <button
+            type="button"
+            className="kid-again"
+            onClick={() => (play.lessonId ? startLesson(play.lessonId) : startLevel(play.levelId, true))}
+          >
             再玩一次
           </button>
         </div>
@@ -268,11 +316,22 @@ export function KidAdventureBoard({
           <button type="button" className="kid-quiet" onClick={() => commit(clearKidCell(playRef.current))} disabled={play.completed}>
             拿走
           </button>
+          {play.lessonId ? (
+            <button type="button" className="kid-quiet kid-wide" onClick={() => startLesson('seat-demo')}>
+              再看示范
+            </button>
+          ) : null}
           <button type="button" className="kid-quiet kid-wide" onClick={onReplayWarmup}>
             再找一次朋友
           </button>
         </div>
       )}
+
+      {!play.completed && !play.lessonId && forward ? (
+        <button type="button" className="kid-go" onClick={() => startLesson(forward.id)}>
+          {forward.label}
+        </button>
+      ) : null}
 
       <div className="kid-levels" aria-label="进度">
         {KID_LEVELS.map((level) => {

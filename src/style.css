@@ -548,6 +548,8 @@
     display: flex;
     justify-content: center;
     gap: 8px;
+    width: 100%;
+    min-width: 0;
   }
 
   .cheer-friend,
@@ -555,6 +557,14 @@
     width: 5.25rem;
     height: 5.25rem;
     animation: cheer-hop 1.15s ease-out both;
+  }
+
+  /* 四个朋友并排时不能把 320 宽的纸卡撑出去。宽屏仍保持原来的 5.25rem。 */
+  .cheer-friend {
+    width: min(5.25rem, calc((100% - 1.5rem) / 4));
+    height: auto;
+    aspect-ratio: 1;
+    min-width: 0;
   }
 
   .cheer-friend:nth-child(2) {

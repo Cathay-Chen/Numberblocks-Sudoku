@@ -65,6 +65,7 @@ export const createInitialState = (difficulty: Difficulty): GameState => {
     correctStreak: 0,
     kidLevelStars: Array(6).fill(0),
     warmupDone: false,
+    learning: null,
     voiceGuideEnabled: true,
     hintText: '',
     elapsedSeconds: 0,
