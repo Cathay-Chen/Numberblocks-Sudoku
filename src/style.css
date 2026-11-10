@@ -783,6 +783,53 @@
 
   .classic-diff,
   .classic-new,
+  .parent-next {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.05rem;
+    font-weight: 800;
+  }
+
+  .replace-shade {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: end center;
+    background: rgb(15 23 42 / 45%);
+    padding: 16px;
+  }
+
+  .replace-dialog {
+    width: min(100%, 22rem);
+    border-radius: 20px;
+    background: #fff;
+    padding: 16px;
+    box-shadow: 0 16px 40px rgb(15 23 42 / 24%);
+  }
+
+  .replace-dialog h2,
+  .replace-dialog p {
+    margin: 0;
+  }
+
+  .replace-dialog h2 {
+    font-size: 1.35rem;
+    font-weight: 800;
+  }
+
+  .replace-dialog p {
+    margin-top: 8px;
+    color: #334155;
+    font-weight: 700;
+  }
+
+  .replace-actions {
+    display: grid;
+    gap: 4px;
+    margin-top: 12px;
+  }
+
   .parent-go,
   .parent-row,
   .parent-dismiss {
@@ -840,6 +887,7 @@
     background: #e0f2fe;
   }
 
+  .parent-row span,
   .parent-go span {
     font-size: 0.8rem;
     font-weight: 700;
@@ -856,6 +904,7 @@
   .warmup-cell:focus-visible,
   .kid-hear:focus-visible,
   .kid-sound:focus-visible,
+  .replace-dialog :focus-visible,
   .kid-step:focus-visible,
   .kid-hand-btn:focus-visible,
   .kid-more:focus-visible,

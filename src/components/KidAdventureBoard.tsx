@@ -5,6 +5,7 @@ import { Playfield } from '../stage/Playfield';
 import { showFriend, type ShowFriendInput } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
 import { cueForMove } from '../kid-adventure/celebrate';
+import { ReplaceDialog, focusSameControl } from './ReplaceDialog';
 import { HandButton, HearButton, QuietLink, ToolIcon } from './ToolIcon';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
@@ -19,10 +20,12 @@ import {
   greetLikeWarmup,
   hintKidPlay,
   emptyFocusTarget,
+  kidBoardInProgress,
   placeKidNumber,
   redoKidPlay,
   selectKidCell,
   undoKidPlay,
+  warmupWouldDropBoard,
   type KidPlay,
 } from '../kid-adventure/play';
 import { geometryOf } from '../kid-adventure/rules';
@@ -70,6 +73,8 @@ export function KidAdventureBoard({
     return greet && opening.levelId === resume ? greetLikeWarmup(started) : started;
   });
   const [moreTools, setMoreTools] = useState(false);
+  const [pendingReplace, setPendingReplace] = useState<(() => void) | null>(null);
+  const replaceOpener = useRef<HTMLElement | null>(null);
   const [pulse, setPulse] = useState<{ key: string; kind: 'place' | 'miss' } | null>(null);
   const [guideEmpties, setGuideEmpties] = useState(false);
   const playRef = useRef(play);
@@ -175,6 +180,29 @@ export function KidAdventureBoard({
   const startLevel = (levelId: number, force = false) => {
     if (!force && levelId > unlockedLevels) return;
     startFresh(createKidPlay(levelId));
+  };
+
+  const requestReplace = (run: () => void) => {
+    if (!kidBoardInProgress(playRef.current)) {
+      run();
+      return;
+    }
+    replaceOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPendingReplace(() => run);
+  };
+
+  const keepBoard = () => {
+    const back = replaceOpener.current;
+    replaceOpener.current = null;
+    setPendingReplace(null);
+    window.setTimeout(() => focusSameControl(back), 0);
+  };
+
+  const replaceBoard = () => {
+    const run = pendingReplace;
+    setPendingReplace(null);
+    replaceOpener.current = null;
+    run?.();
   };
 
   const startLesson = (lessonId: string) => {
@@ -415,7 +443,7 @@ export function KidAdventureBoard({
       </div>
 
       {!play.completed && !play.lessonId && forward ? (
-        <QuietLink label={forward.label} onClick={() => startLesson(forward.id)} />
+        <QuietLink label={forward.label} onClick={() => requestReplace(() => startLesson(forward.id))} />
       ) : null}
 
       <QuietLink
@@ -426,9 +454,16 @@ export function KidAdventureBoard({
       {moreTools && (
         <div className="kid-extra">
           {play.lessonId ? (
-            <QuietLink icon="demo" label="再看示范" onClick={() => startLesson(demoIdFor(play.lessonId!))} />
+            <QuietLink icon="demo" label="再看示范" onClick={() => requestReplace(() => startLesson(demoIdFor(play.lessonId!)))} />
           ) : null}
-          <QuietLink icon="friends" label="再找一次朋友" onClick={onReplayWarmup} />
+          <QuietLink
+            icon="friends"
+            label="再找一次朋友"
+            onClick={() => {
+              if (warmupWouldDropBoard(playRef.current)) requestReplace(onReplayWarmup);
+              else onReplayWarmup();
+            }}
+          />
         </div>
       )}
 
@@ -446,7 +481,7 @@ export function KidAdventureBoard({
               data-done={stars > 0 ? '1' : undefined}
               aria-current={current && !play.lessonId ? 'step' : undefined}
               aria-label={`${level.name}${locked ? ' 还没打开' : stars > 0 ? ' 已完成' : ' 可以玩'}${current ? ' 现在' : ''}`}
-              onClick={() => startLevel(level.id)}
+              onClick={() => requestReplace(() => startLevel(level.id))}
             >
               <span>{level.id}</span>
               {stars > 0 ? <ToolIcon name="check" /> : null}
@@ -454,6 +489,7 @@ export function KidAdventureBoard({
           );
         })}
       </div>
+      {pendingReplace ? <ReplaceDialog onKeep={keepBoard} onReplace={replaceBoard} /> : null}
     </section>
   );
 }

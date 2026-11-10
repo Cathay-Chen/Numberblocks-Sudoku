@@ -548,8 +548,11 @@ export function useSudokuGame() {
     });
   };
 
+  const classicHasMoves = historyRef.current.length > 0 || futureRef.current.length > 0;
+
   return {
     state,
+    classicHasMoves,
     actionLabel,
     handleAction,
     handleNumberPick,

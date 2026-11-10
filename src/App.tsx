@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { cheers } from './audio/celebration';
 import { sfx } from './audio/sfx';
 import { ActionControls } from './components/ActionControls';
@@ -10,9 +10,10 @@ import { SudokuBoard } from './components/SudokuBoard';
 import { TipBanner } from './components/TipBanner';
 import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
-import { lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
+import { continuation, lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
 import { GAME_ACTIONS } from './game/actions';
+import { ReplaceDialog, focusSameControl } from './components/ReplaceDialog';
 import { ToolIcon } from './components/ToolIcon';
 
 type AudioSettings = {
@@ -33,6 +34,7 @@ export default function App() {
     clearSelection,
     placeNumberFromDrag,
     newGame,
+    classicHasMoves,
     updateKidLevelStars,
     recordLesson,
     markWarmupDone,
@@ -41,6 +43,8 @@ export default function App() {
   } = useSudokuGame();
 
   const [place, setPlace] = useState<Place>('learn');
+  const [pendingSwap, setPendingSwap] = useState<(() => void) | null>(null);
+  const swapOpener = useRef<HTMLElement | null>(null);
   const [replayWarmup, setReplayWarmup] = useState(false);
   const [greetBoard, setGreetBoard] = useState(false);
   const [parentOpen, setParentOpen] = useState(false);
@@ -99,6 +103,29 @@ export default function App() {
   const classicDifficultyLabel =
     state.difficulty === 'easy' ? '简单' : state.difficulty === 'medium' ? '中等' : '困难';
   const showWarmup = place === 'learn' && (!state.warmupDone || replayWarmup);
+
+  const askSwap = (run: () => void) => {
+    if (!classicHasMoves) {
+      run();
+      return;
+    }
+    swapOpener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setPendingSwap(() => run);
+  };
+
+  const keepClassic = () => {
+    const back = swapOpener.current;
+    swapOpener.current = null;
+    setPendingSwap(null);
+    window.setTimeout(() => focusSameControl(back), 0);
+  };
+
+  const replaceClassic = () => {
+    const run = pendingSwap;
+    setPendingSwap(null);
+    swapOpener.current = null;
+    run?.();
+  };
 
   const openClassic = () => {
     setParentOpen(false);
@@ -166,6 +193,11 @@ export default function App() {
               <div className="card-body">
                 <h2 className="font-display text-3xl text-slate-900">家长</h2>
                 <div className="space-y-1 text-sm font-bold leading-6 text-slate-800">
+                  <p className="parent-next">
+                    {pathIsClear(state.kidLevelStars)
+                      ? `孩子下一步：${continuation(state.learning).label}。`
+                      : '孩子下一步：接着做小草地。'}
+                  </p>
                   <p>学习记录不记时间，也不按年龄。</p>
                   <p>原来的六关：{state.kidLevelStars.filter((stars) => stars > 0).length} 关有星星。</p>
                   {lessonParentLines(state.learning).map((line) => (
@@ -175,7 +207,7 @@ export default function App() {
                     ? sixGateLines(state.learning).map((line) => <p key={line}>{line}</p>)
                     : null}
                 </div>
-                <button type="button" className="parent-go" onClick={openClassic}>
+                <button type="button" className="parent-row" onClick={openClassic}>
                   经典数独
                   <span>9×9，给大人。孩子的格子留在这里。</span>
                 </button>
@@ -240,8 +272,8 @@ export default function App() {
                 stars={state.stars}
                 kidMode={false}
                 hintText={state.hintText}
-                onAction={handleAction}
-                onNewGame={() => handleAction(GAME_ACTIONS.NEW_GAME)}
+                onAction={(difficulty) => askSwap(() => handleAction(difficulty))}
+                onNewGame={() => askSwap(() => handleAction(GAME_ACTIONS.NEW_GAME))}
               />
               <NumberPicker selectedValue={state.selectedValue} onPick={handleNumberPick} />
               <button type="button" className="btn btn-outline min-h-12" onClick={backToChild}>
@@ -258,6 +290,7 @@ export default function App() {
       {(state.completed || state.failed) && (
         <WinOverlay mode={state.completed ? 'win' : 'lose'} onReplay={() => newGame(state.difficulty)} />
       )}
+      {pendingSwap ? <ReplaceDialog onKeep={keepClassic} onReplace={replaceClassic} /> : null}
       {guideOpen && <Guide onClose={() => setGuideOpen(false)} />}
       {settingsOpen && (
         <Settings audioSettings={audioSettings} onChange={setAudioSettings} onClose={() => setSettingsOpen(false)} />

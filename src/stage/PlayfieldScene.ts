@@ -152,9 +152,21 @@ export class PlayfieldScene extends Phaser.Scene {
     });
   }
 
+  private syncScale() {
+    const host = this.host();
+    if (!host) return false;
+    const width = Math.max(64, host.clientWidth);
+    const height = Math.max(64, host.clientHeight);
+    if (Math.abs(this.scale.width - width) < 2 && Math.abs(this.scale.height - height) < 2) return false;
+    this.scale.resize(width, height);
+    return true;
+  }
+
   private draw(animate: boolean) {
     const model = this.model;
     if (!model || !this.frames || !this.marks) return;
+    if (this.syncScale()) return;
+    if (this.reduced()) this.tweens.killAll();
     this.wake();
     const layout = layoutPlayfield(this.scale.width, model);
     this.seatBoxes = layout.seats;
@@ -184,6 +196,9 @@ export class PlayfieldScene extends Phaser.Scene {
               : 'idle';
       host.dataset.stageCue = cue;
       host.dataset.playfield = model.kind;
+      const playing = this.tweens.getTweens().filter((tween) => tween.isPlaying()).length;
+      host.dataset.stageMotion = this.reduced() || playing === 0 ? 'still' : 'move';
+      host.dataset.tweens = String(this.reduced() ? 0 : playing);
     }
     this.rest();
   }

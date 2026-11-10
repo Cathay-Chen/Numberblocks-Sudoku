@@ -64,6 +64,18 @@ const LESSON_PLACE_TEXT = '放好了。';
 export const clearedText = (size: number): string =>
   size === 6 ? '六行、六列、六个小宫都齐了。' : '四行、四列、四个小宫都齐了。';
 
+// 下完的局星星或学习记录已经记下。没下完、但有格子、撤销、提示或放重，换掉就会丢。
+export const kidBoardInProgress = (play: KidPlay): boolean =>
+  !play.completed &&
+  (play.past.length > 0 || play.future.length > 0 || play.hintsUsed > 0 || play.tried > 0);
+
+// 关卡只在还有可撤销的步时，离开再回来会恢复。只看了提示、或已经撤销光，存档不会把这盘开回来。
+export const warmupWouldDropBoard = (play: KidPlay): boolean => {
+  if (!kidBoardInProgress(play)) return false;
+  if (play.lessonId) return false;
+  return play.past.length === 0;
+};
+
 const remember = (play: KidPlay): Pick<KidPlay, 'past' | 'future'> => {
   const past = [...play.past, cloneKidBoard(play.board)];
   if (past.length > KID_HISTORY_LIMIT) past.shift();
