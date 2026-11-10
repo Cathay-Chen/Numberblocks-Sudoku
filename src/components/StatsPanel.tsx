@@ -1,5 +1,6 @@
 import type { Difficulty } from '../game/types';
 import { formatTime, getDifficultyLabel } from '../game/utils';
+import { ToolIcon } from './ToolIcon';
 
 type StatsPanelProps = {
   elapsedSeconds: number;
@@ -11,6 +12,7 @@ type StatsPanelProps = {
   kidMode: boolean;
   hintText: string;
   onAction: (action: 'easy' | 'medium' | 'hard') => void;
+  onNewGame: () => void;
 };
 
 export function StatsPanel({
@@ -23,6 +25,7 @@ export function StatsPanel({
   kidMode,
   hintText,
   onAction,
+  onNewGame,
 }: StatsPanelProps) {
   return (
     <section className="panel p-5">
@@ -59,27 +62,28 @@ export function StatsPanel({
       </dl>
 
       {!kidMode && (
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <button
-            type="button"
-            className={`btn btn-sm ${difficulty === 'easy' ? 'btn-info text-white' : 'btn-outline'}`}
-            onClick={() => onAction('easy')}
-          >
-            简单
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${difficulty === 'medium' ? 'btn-info text-white' : 'btn-outline'}`}
-            onClick={() => onAction('medium')}
-          >
-            中等
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${difficulty === 'hard' ? 'btn-info text-white' : 'btn-outline'}`}
-            onClick={() => onAction('hard')}
-          >
-            困难
+        <div className="classic-next">
+          <p>换难度或新游戏，会换掉这一局的格子。</p>
+          <div className="classic-diffs" role="group" aria-label="难度">
+            {([
+              ['easy', '简单'],
+              ['medium', '中等'],
+              ['hard', '困难'],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                className="classic-diff"
+                aria-pressed={difficulty === id}
+                onClick={() => onAction(id)}
+              >
+                {difficulty === id ? <ToolIcon name="check" /> : null}
+                <span>{label}</span>
+              </button>
+            ))}
+          </div>
+          <button type="button" className="classic-new" onClick={onNewGame}>
+            新游戏
           </button>
         </div>
       )}

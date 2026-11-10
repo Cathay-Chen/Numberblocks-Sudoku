@@ -6,7 +6,14 @@ import {
   createKidLevelState,
   selectResumeLevel,
 } from '../src/kid-adventure/engine';
-import { createKidPlay, hintKidPlay, placeKidNumber, undoKidPlay } from '../src/kid-adventure/play';
+import {
+  createKidPlay,
+  hintKidPlay,
+  kidBoardInProgress,
+  placeKidNumber,
+  undoKidPlay,
+  warmupWouldDropBoard,
+} from '../src/kid-adventure/play';
 import {
   countKidSolutions,
   findLastInHouse,
@@ -107,5 +114,20 @@ describe('kid adventure engine', () => {
       expect(play.completed).toBe(true);
       expect(isKidGridComplete(play.board)).toBe(true);
     }
+  });
+
+  it('asks before replacing an unfinished board, and keeps a moved level when leaving for warmup', () => {
+    const fresh = createKidPlay(1);
+    expect(kidBoardInProgress(fresh)).toBe(false);
+    expect(warmupWouldDropBoard(fresh)).toBe(false);
+    const moved = { ...fresh, past: [fresh.board.map((row) => row.slice())] };
+    expect(kidBoardInProgress(moved)).toBe(true);
+    expect(warmupWouldDropBoard(moved)).toBe(false);
+    const hinted = { ...fresh, hintsUsed: 1 };
+    expect(warmupWouldDropBoard(hinted)).toBe(true);
+    const lesson = { ...hinted, lessonId: 'seat-demo' };
+    expect(warmupWouldDropBoard(lesson)).toBe(false);
+    const finished = { ...moved, completed: true };
+    expect(kidBoardInProgress(finished)).toBe(false);
   });
 });
