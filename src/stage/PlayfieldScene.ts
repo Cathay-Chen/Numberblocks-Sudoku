@@ -23,6 +23,7 @@ export class PlayfieldScene extends Phaser.Scene {
   private marks: Phaser.GameObjects.Graphics | null = null;
   private seatImages = new Map<string, Phaser.GameObjects.Image>();
   private trayImages = new Map<number, Phaser.GameObjects.Image>();
+  private trayLabels = new Map<number, Phaser.GameObjects.Text>();
   private ghost: Phaser.GameObjects.Image | null = null;
   private guide: Phaser.GameObjects.Image | null = null;
   private preview: Phaser.GameObjects.Graphics | null = null;
@@ -57,13 +58,26 @@ export class PlayfieldScene extends Phaser.Scene {
     for (let value = 1; value <= 6; value += 1) {
       const image = this.add.image(0, 0, friendKey(value)).setVisible(false).setDepth(4);
       this.trayImages.set(value, image);
+      const label = this.add
+        .text(0, 0, String(value), {
+          fontFamily: 'Nunito, sans-serif',
+          fontSize: '20px',
+          color: '#0f172a',
+          fontStyle: 'bold',
+        })
+        .setOrigin(0.5, 1)
+        .setDepth(5)
+        .setVisible(false);
+      this.trayLabels.set(value, label);
     }
+    this.smoothFaces();
     this.ghost = this.add.image(0, 0, friendKey(1)).setVisible(false).setDepth(8);
     this.guide = this.add.image(0, 0, friendKey(1)).setVisible(false).setDepth(5);
     this.preview = this.add.graphics().setDepth(6);
     this.input.on('pointerdown', this.onDown, this);
     this.input.on('pointermove', this.onMove, this);
     this.input.on('pointerup', this.onUp, this);
+    this.input.on('pointerupoutside', this.onUp, this);
     this.scale.on('resize', this.relayout, this);
     this.stopModel = subscribePlayfield((model) => {
       if (!this.sys?.isActive()) {
@@ -88,12 +102,21 @@ export class PlayfieldScene extends Phaser.Scene {
         this.input?.off('pointerdown', this.onDown, this);
         this.input?.off('pointermove', this.onMove, this);
         this.input?.off('pointerup', this.onUp, this);
+        this.input?.off('pointerupoutside', this.onUp, this);
         this.scale?.off('resize', this.relayout, this);
         this.tweens?.killAll();
       } catch {
         // 拆掉游戏时系统可能已经没了。
       }
     });
+  }
+
+  private smoothFaces() {
+    for (let value = 1; value <= 6; value += 1) {
+      const key = friendKey(value);
+      if (!this.textures.exists(key)) continue;
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.LINEAR);
+    }
   }
 
   private relayout = () => {
@@ -133,7 +156,7 @@ export class PlayfieldScene extends Phaser.Scene {
     const model = this.model;
     if (!model || !this.frames || !this.marks) return;
     this.wake();
-    const layout = layoutPlayfield(this.scale.width, this.scale.height, model);
+    const layout = layoutPlayfield(this.scale.width, model);
     this.seatBoxes = layout.seats;
     this.trayBoxes = layout.tray;
     this.frames.clear();
@@ -245,20 +268,22 @@ export class PlayfieldScene extends Phaser.Scene {
   }
 
   private drawTray(model: PlayfieldModel, tray: TrayBox[]) {
-    this.frames?.fillStyle(0xffffff, 1);
-    this.frames?.fillRoundedRect(8, this.trayBoxes.length ? Math.min(...tray.map((item) => item.y)) - 8 : 0, this.scale.width - 16, this.scale.height, 16);
     this.trayImages.forEach((image) => image.setVisible(false));
+    this.trayLabels.forEach((label) => label.setVisible(false));
+    const graphics = this.frames;
     for (const item of tray) {
+      graphics?.fillStyle(0xffffff, 1);
+      graphics?.fillRoundedRect(item.x, item.y, item.w, item.h, 14);
+      graphics?.lineStyle(3, this.armed === item.value ? 0x0369a1 : 0x0f172a, 1);
+      graphics?.strokeRoundedRect(item.x, item.y, item.w, item.h, 14);
       const image = this.trayImages.get(item.value);
+      const label = this.trayLabels.get(item.value);
       if (!image?.scene || !this.textures.exists(friendKey(item.value))) continue;
-      const lifted = this.armed === item.value;
+      const face = Math.min(item.w - 8, item.h - 26);
       image.setTexture(friendKey(item.value)).setVisible(true).setAlpha(model.closed ? 0.55 : 1);
-      image.setDisplaySize(item.w * 0.82, item.h * 0.82);
-      image.setPosition(item.x + item.w / 2, item.y + item.h / 2 - (lifted ? 6 : 0));
-      if (lifted) {
-        this.marks?.lineStyle(4, 0x0369a1, 1);
-        this.marks?.strokeRoundedRect(item.x - 3, item.y - 9, item.w + 6, item.h + 6, 12);
-      }
+      image.setDisplaySize(face, face);
+      image.setPosition(item.x + item.w / 2, item.y + 4 + face / 2);
+      label?.setVisible(true).setText(String(item.value)).setPosition(item.x + item.w / 2, item.y + item.h - 3);
     }
   }
 

@@ -96,7 +96,6 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
       <p className="kid-task">{station.prompt}</p>
       <Playfield
         model={model}
-        height={station.house === 'box' ? 320 : 280}
         onMode={setField}
         onCell={(_row, col) => {
           const prev = play;

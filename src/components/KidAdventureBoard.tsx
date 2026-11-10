@@ -224,7 +224,6 @@ export function KidAdventureBoard({
       <h2 className="kid-task">{task}</h2>
       <Playfield
         model={model}
-        height={geometry.size === 6 ? 540 : 460}
         onMode={setField}
         onCell={(row, col) => commit(selectKidCell(playRef.current, { row, col }))}
         onPlace={(row, col, value) => placeFromPicker(value, row < 0 ? undefined : { row, col })}

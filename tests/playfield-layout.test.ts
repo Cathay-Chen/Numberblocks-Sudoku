@@ -6,12 +6,14 @@ import { createKidPlay, placeKidNumber } from '../src/kid-adventure/play';
 describe('playfield layout', () => {
   it('keeps seats above the tray on a narrow 4x4 and a 6x6', () => {
     for (const spec of [
-      { width: 320, height: 460, kind: 'grid' as const, size: 4, boxRows: 2, boxCols: 2, digits: [1, 2, 3, 4] },
-      { width: 320, height: 540, kind: 'grid' as const, size: 6, boxRows: 2, boxCols: 3, digits: [1, 2, 3, 4, 5, 6] },
-      { width: 390, height: 280, kind: 'warmup-row' as const, size: 4, boxRows: 1, boxCols: 4, digits: [1, 2, 3, 4] },
+      { width: 340, kind: 'grid' as const, size: 4, boxRows: 2, boxCols: 2, digits: [1, 2, 3, 4], max: 450 },
+      { width: 320, kind: 'grid' as const, size: 6, boxRows: 2, boxCols: 3, digits: [1, 2, 3, 4, 5, 6], max: 560 },
+      { width: 390, kind: 'warmup-row' as const, size: 4, boxRows: 1, boxCols: 4, digits: [1, 2, 3, 4], max: 230 },
     ]) {
-      const layout = layoutPlayfield(spec.width, spec.height, spec);
+      const layout = layoutPlayfield(spec.width, spec);
       expect(layout.seats.length).toBe(spec.kind === 'grid' ? spec.size * spec.size : 4);
+      expect(layout.height).toBeLessThanOrEqual(spec.max);
+      expect(layout.tray[0].h).toBeGreaterThan(layout.tray[0].w);
       for (const seat of layout.seats) {
         expect(seat.y + seat.h).toBeLessThanOrEqual(layout.trayTop);
         expect(seat.x).toBeGreaterThanOrEqual(0);
@@ -19,7 +21,7 @@ describe('playfield layout', () => {
       }
       for (const item of layout.tray) {
         expect(item.y).toBeGreaterThanOrEqual(layout.trayTop - 1);
-        expect(item.y + item.h).toBeLessThanOrEqual(spec.height + 1);
+        expect(item.y + item.h).toBeLessThanOrEqual(layout.height);
       }
     }
   });

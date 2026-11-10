@@ -645,4 +645,16 @@ React 仍管准备、4×4、6×6 的规则、提示、星星、存档和学习�
 
 `npx vitest run`：18 个文件，92 项通过。没有 CI。生产构建主脚本 `index-Bd6FniFn.js` gzip 84.76 kB，样式 gzip 14.44 kB，舞台 `boot-CpkzTAgP.js` gzip 336.07 kB。没有真机，不能说手机卡顿已好。录屏没有人耳听过。
 
-截图：`compare-390-warmup-main.png` 对 `compare-390-warmup-new.png`，`compare-390-level1-main.png` 对 `compare-390-level1-new.png`，`compare-390-clear-new.png`，`field-320-next.png`，`field-320-six-next.png`。录屏 `/opt/cursor/artifacts/play-drag-window.mp4`。
+角色脸的彩点来自 WebGL 最近邻缩小。已改回线性过滤，Canvas 降级同样走平滑采样。托盘每个朋友下面有 1–6。舞台高度改成只包住棋盘和托盘。
+
+390 宽第 1 关的「看一步」「再帮帮我」在首屏里。关卡圆点在最底下，可能要再滚一点。完成句在画布外。320 宽的下一关仍可能要滚，滚到后能点。
+
+键盘和读屏：画布 `aria-hidden`。同一层里有「第几行第几列」和「放入数字积木 n」按钮，可 Tab，回车触发和指针相同的落子函数，`pointer-events: none` 所以不抢拖拽。句子仍是原来的实时提示。
+
+WebGL 创建失败时显示原来的 DOM 棋盘和数字键。这次用关掉 WebGL 的方式看过 Canvas 降级的第 1 关静止画面，没有再把 Canvas 降级走完一题。
+
+拖出棋盘松手会把积木送回托盘，不改盘。冲突格仍按原规则留在盘上。撤销仍是原来的 `undoKidPlay`，这次录屏没有再点撤销。准备和 6×6 用的是同一块舞台，但这版构建没有再把准备和 6×6 各走完。
+
+`npx vitest run`：18 个文件，92 项通过。没有 CI。构建 `index-C8rK2tip.js`，舞台 `boot-B4WfdsKi.js` gzip 335.52 kB。没有真机，不能说手机卡顿已好。没有人耳听过。
+
+对照截图：`compare-390-level1-main.png` 和 `field-390-level1-final.png`。Canvas 降级：`field-390-canvas.png`。录屏 `/opt/cursor/artifacts/play-drag-4x4.mp4`：开头是完整第 1 关，4 从托盘拖到右上空格并预览后落下，接着 3 拖出棋盘，结尾 4 还在、空格没有多出 3。结尾不再是风景。

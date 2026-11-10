@@ -1,22 +1,39 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { layoutPlayfield } from './layout';
 import { presentPlayfield, subscribePlayAction, subscribeSeats, type PlayfieldModel } from './playfield';
 import { StageHost } from './StageHost';
 
 type PlayfieldProps = {
   model: Omit<PlayfieldModel, 'rev'>;
-  height: number;
   onCell: (row: number, col: number) => void;
   onPlace: (row: number, col: number, value: number) => void;
   onMode?: (mode: 'live' | 'fallback') => void;
 };
 
-export function Playfield({ model, height, onCell, onPlace, onMode }: PlayfieldProps) {
+export function Playfield({ model, onCell, onPlace, onMode }: PlayfieldProps) {
+  const wrap = useRef<HTMLDivElement>(null);
   const keys = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(320);
   const [mode, setMode] = useState<'boot' | 'live' | 'fallback'>('boot');
   const cellRef = useRef(onCell);
   const placeRef = useRef(onPlace);
   cellRef.current = onCell;
   placeRef.current = onPlace;
+
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const apply = () => {
+      const width = el.clientWidth;
+      if (width < 64) return;
+      const next = layoutPlayfield(width, model).height;
+      setHeight((prev) => (prev === next ? prev : next));
+    };
+    apply();
+    const observer = new ResizeObserver(apply);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [model.kind, model.size, model.boxRows, model.boxCols, model.digits]);
 
   useEffect(() => {
     if (mode !== 'live') return;
@@ -45,7 +62,7 @@ export function Playfield({ model, height, onCell, onPlace, onMode }: PlayfieldP
   }, []);
 
   return (
-    <div className="play-wrap" hidden={mode === 'fallback'}>
+    <div ref={wrap} className="play-wrap" hidden={mode === 'fallback'}>
       <StageHost
         height={height}
         onMode={(next) => {
