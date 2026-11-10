@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { cheers } from '../audio/celebration';
 import { cueForWarmup } from '../kid-adventure/celebrate';
+import { showFriend } from '../stage/present';
 import { speakCoach } from '../audio/speak';
 import {
   WARMUP_STATIONS,
@@ -22,13 +23,13 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
   const station = WARMUP_STATIONS[play.stationIndex] ?? WARMUP_STATIONS[0];
   const highlights = new Set(play.highlight);
 
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    showFriend({ kind: 'idle', value: null, count: 4, sound: false });
+    return () => {
       window.speechSynthesis?.cancel();
       cheers.stop();
-    },
-    []
-  );
+    };
+  }, []);
 
   const cells = station.house === 'box' ? (
     <div className="kid-box warmup-box" aria-label="小宫">
@@ -174,7 +175,11 @@ const playWarmupCue = (prev: WarmupState, next: WarmupState) => {
     afterComplete: next.cleared,
     tone: next.feedback.tone,
   });
-  if (cue) cheers.play(cue);
+  if (!cue) {
+    showFriend({ kind: 'idle', value: next.feedback.value, count: 4, sound: false });
+    return;
+  }
+  showFriend({ kind: cue, value: next.feedback.value, count: 4 });
 };
 
 function CellButton({

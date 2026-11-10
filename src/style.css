@@ -401,6 +401,29 @@
     font-size: 0.95rem;
   }
 
+  .friend-stage {
+    width: 100%;
+    max-width: 100%;
+    height: 112px;
+    margin-bottom: 8px;
+  }
+
+  .friend-stage-canvas,
+  .friend-stage canvas {
+    width: 100%;
+    max-width: 100%;
+    height: 112px;
+    display: block;
+  }
+
+  .friend-fallback {
+    width: 72px;
+    height: 72px;
+    margin: 16px auto;
+    display: block;
+    object-fit: contain;
+  }
+
   .kid-card {
     display: grid;
     gap: 12px;

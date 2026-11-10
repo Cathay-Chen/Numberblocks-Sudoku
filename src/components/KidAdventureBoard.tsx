@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { cheers } from '../audio/celebration';
+import { showFriend } from '../stage/present';
 import { cueForMove } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
@@ -119,7 +120,11 @@ export function KidAdventureBoard({
       afterComplete: next.completed,
       tone: next.feedback.tone,
     });
-    if (cue) cheers.play(cue);
+    if (cue) {
+      showFriend({ kind: cue, value: next.feedback.value ?? value, count: next.board.length });
+    } else if (next.feedback.tone === 'hint') {
+      showFriend({ kind: 'hint', value: next.feedback.value, count: next.board.length, sound: false });
+    }
     if (next.selected && cue === 'place') markPulse(`${next.selected.row}-${next.selected.col}`, 'place');
     if (cue === 'miss' && next.focus[0]) markPulse(`${next.focus[0].row}-${next.focus[0].col}`, 'miss');
   };
@@ -127,6 +132,12 @@ export function KidAdventureBoard({
   const startFresh = (next: KidPlay) => {
     window.speechSynthesis?.cancel();
     cheers.stop();
+    showFriend({
+      kind: next.completed ? 'board' : 'idle',
+      value: null,
+      count: next.board.length,
+      sound: false,
+    });
     window.clearTimeout(pulseTimer.current);
     window.clearTimeout(guideTimer.current);
     setPulse(null);
@@ -145,6 +156,15 @@ export function KidAdventureBoard({
     if (!next) return;
     startFresh(next);
   };
+
+  useEffect(() => {
+    showFriend({
+      kind: play.completed ? 'board' : play.feedback.tone === 'hint' ? 'hint' : 'idle',
+      value: play.feedback.value,
+      count: play.board.length,
+      sound: false,
+    });
+  }, []);
 
   useEffect(() => {
     if (!play.completed || play.lessonId) return;
@@ -297,7 +317,20 @@ export function KidAdventureBoard({
       )}
 
       {!play.completed && (
-        <button type="button" className="kid-quiet" onClick={() => commit(hintKidPlay(playRef.current))}>
+        <button
+          type="button"
+          className="kid-quiet"
+          onClick={() => {
+            const next = hintKidPlay(playRef.current);
+            commit(next);
+            showFriend({
+              kind: next.feedback.tone === 'conflict' ? 'miss' : 'hint',
+              value: next.feedback.value,
+              count: next.board.length,
+              sound: false,
+            });
+          }}
+        >
           看一步
         </button>
       )}
