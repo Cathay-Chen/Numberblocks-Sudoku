@@ -12,6 +12,13 @@ const boardMoved = (saved: KidSession, puzzle: number[][]): boolean =>
   saved.future.length > 0 ||
   saved.board.some((row, rowIndex) => row.some((cell, colIndex) => cell !== puzzle[rowIndex][colIndex]));
 
+// 只点了看一步时格子还是开局，但提示次数必须留下，否则刷新后会被记成独立完成。
+const lessonShouldRestore = (saved: KidSession, puzzle: number[][]): boolean => {
+  const expectedVersion = puzzle.length === 6 ? 2 : 1;
+  if (saved.v !== expectedVersion) return false;
+  return boardMoved(saved, puzzle) || (saved.hintsUsed ?? 0) > 0 || (saved.mistakes ?? 0) > 0;
+};
+
 export const chooseOpening = (input: {
   totalStars: number;
   levelStars: number[];
@@ -21,7 +28,7 @@ export const chooseOpening = (input: {
   const saved = input.saved;
   if (saved?.lessonId && pathIsClear(input.levelStars)) {
     const lesson = lessonById(saved.lessonId);
-    if (lesson && saved.v === 1 && boardMoved(saved, lesson.puzzle)) {
+    if (lesson && lessonShouldRestore(saved, lesson.puzzle)) {
       return { kind: 'lesson', id: lesson.id, restore: true };
     }
   }

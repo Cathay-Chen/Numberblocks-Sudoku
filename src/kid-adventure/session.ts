@@ -5,6 +5,7 @@ import { isKidGridComplete } from './rules';
 
 export const KID_SESSION_KEY = 'numberblocks.kid-board.v1';
 export const SESSION_VERSION = 1;
+export const SIX_SESSION_VERSION = 2;
 const MAX_HISTORY = 80;
 
 export type KidSession = {
@@ -22,20 +23,20 @@ export type KidSession = {
 type ReadStorage = { getItem: (key: string) => string | null };
 type WriteStorage = { setItem: (key: string, value: string) => void };
 
-const isBoard = (value: unknown): value is number[][] =>
+const isBoard = (value: unknown, size: number): value is number[][] =>
   Array.isArray(value) &&
-  value.length === 4 &&
+  value.length === size &&
   value.every(
     (row) =>
       Array.isArray(row) &&
-      row.length === 4 &&
-      row.every((cell) => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell <= 4)
+      row.length === size &&
+      row.every((cell) => typeof cell === 'number' && Number.isInteger(cell) && cell >= 0 && cell <= size)
   );
 
 const countOrZero = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 
-const isCell = (value: unknown): value is { row: number; col: number } | null => {
+const isCell = (value: unknown, size: number): value is { row: number; col: number } | null => {
   if (value == null) return true;
   if (typeof value !== 'object') return false;
   const cell = value as { row?: unknown; col?: unknown };
@@ -43,9 +44,9 @@ const isCell = (value: unknown): value is { row: number; col: number } | null =>
     typeof cell.row === 'number' &&
     typeof cell.col === 'number' &&
     cell.row >= 0 &&
-    cell.row < 4 &&
+    cell.row < size &&
     cell.col >= 0 &&
-    cell.col < 4
+    cell.col < size
   );
 };
 
@@ -54,20 +55,23 @@ export const parseKidSession = (raw: string | null): KidSession | null => {
   try {
     const parsed = JSON.parse(raw) as Partial<KidSession>;
     if (typeof parsed.lessonId === 'string') {
-      if (parsed.v !== SESSION_VERSION) return null;
       const lesson = lessonById(parsed.lessonId);
-      if (!lesson || !isBoard(parsed.board)) return null;
-      for (let row = 0; row < 4; row += 1) {
-        for (let col = 0; col < 4; col += 1) {
+      if (!lesson) return null;
+      const size = lesson.puzzle.length;
+      // 6×6 用 v:2。旧代码只认 v:1 的 4×4，对不上就丢掉这盘，不改星星。
+      const expectedVersion = size === 6 ? SIX_SESSION_VERSION : SESSION_VERSION;
+      if (parsed.v !== expectedVersion || !isBoard(parsed.board, size)) return null;
+      for (let row = 0; row < size; row += 1) {
+        for (let col = 0; col < size; col += 1) {
           if (lesson.puzzle[row][col] !== 0 && parsed.board[row][col] !== lesson.puzzle[row][col]) return null;
         }
       }
-      const past = Array.isArray(parsed.past) ? parsed.past.filter(isBoard).slice(-MAX_HISTORY) : [];
-      const future = Array.isArray(parsed.future) ? parsed.future.filter(isBoard).slice(0, MAX_HISTORY) : [];
-      if (!isCell(parsed.selected ?? null)) return null;
+      const past = Array.isArray(parsed.past) ? parsed.past.filter((board) => isBoard(board, size)).slice(-MAX_HISTORY) : [];
+      const future = Array.isArray(parsed.future) ? parsed.future.filter((board) => isBoard(board, size)).slice(0, MAX_HISTORY) : [];
+      if (!isCell(parsed.selected ?? null, size)) return null;
       const selected = parsed.selected ?? null;
       return {
-        v: SESSION_VERSION,
+        v: expectedVersion,
         levelId: 0,
         lessonId: lesson.id,
         board: parsed.board.map((row) => row.slice()),
@@ -80,15 +84,15 @@ export const parseKidSession = (raw: string | null): KidSession | null => {
     }
     if (typeof parsed.levelId !== 'number') return null;
     const level = KID_LEVELS.find((item) => item.id === parsed.levelId);
-    if (!level || !isBoard(parsed.board)) return null;
+    if (!level || !isBoard(parsed.board, 4)) return null;
     for (let row = 0; row < 4; row += 1) {
       for (let col = 0; col < 4; col += 1) {
         if (level.puzzle[row][col] !== 0 && parsed.board[row][col] !== level.puzzle[row][col]) return null;
       }
     }
-    const past = Array.isArray(parsed.past) ? parsed.past.filter(isBoard).slice(-MAX_HISTORY) : [];
-    const future = Array.isArray(parsed.future) ? parsed.future.filter(isBoard).slice(0, MAX_HISTORY) : [];
-    if (!isCell(parsed.selected ?? null)) return null;
+    const past = Array.isArray(parsed.past) ? parsed.past.filter((board) => isBoard(board, 4)).slice(-MAX_HISTORY) : [];
+    const future = Array.isArray(parsed.future) ? parsed.future.filter((board) => isBoard(board, 4)).slice(0, MAX_HISTORY) : [];
+    if (!isCell(parsed.selected ?? null, 4)) return null;
     const selected = parsed.selected ?? null;
     return {
       v: parsed.v === SESSION_VERSION ? SESSION_VERSION : undefined,
@@ -115,7 +119,7 @@ export const loadKidSession = (storage: ReadStorage): KidSession | null => {
 
 export const saveKidSession = (storage: WriteStorage, play: KidPlay) => {
   const session: KidSession = {
-    v: SESSION_VERSION,
+    v: play.board.length === 6 ? SIX_SESSION_VERSION : SESSION_VERSION,
     levelId: play.levelId,
     board: play.board.map((row) => row.slice()),
     past: play.past.slice(-MAX_HISTORY).map((board) => board.map((row) => row.slice())),
