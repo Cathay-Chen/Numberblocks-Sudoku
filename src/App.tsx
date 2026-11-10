@@ -12,6 +12,8 @@ import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
 import { lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
+import { GAME_ACTIONS } from './game/actions';
+import { ToolIcon } from './components/ToolIcon';
 
 type AudioSettings = {
   masterVolume: number;
@@ -119,14 +121,16 @@ export default function App() {
           <div className="kid-top-actions">
             <button
               type="button"
-              className="kid-quiet"
+              className="kid-sound"
               aria-pressed={audioSettings.feedbackEnabled}
+              aria-label={audioSettings.feedbackEnabled ? '声音开，点一下静音' : '现在静音，点一下打开声音'}
               onClick={() => {
                 cheers.stop();
                 setAudioSettings((prev) => ({ ...prev, feedbackEnabled: !prev.feedbackEnabled }));
               }}
             >
-              {audioSettings.feedbackEnabled ? '声音开' : '静音'}
+              <ToolIcon name={audioSettings.feedbackEnabled ? 'hear' : 'mute'} />
+              <span>{audioSettings.feedbackEnabled ? '声音' : '静音'}</span>
             </button>
             <button type="button" className="kid-parent" onClick={() => setParentOpen(true)}>
               家长
@@ -171,16 +175,17 @@ export default function App() {
                     ? sixGateLines(state.learning).map((line) => <p key={line}>{line}</p>)
                     : null}
                 </div>
-                <button type="button" className="btn btn-outline min-h-12" onClick={openClassic}>
+                <button type="button" className="parent-go" onClick={openClassic}>
                   经典数独
+                  <span>9×9，给大人。孩子的格子留在这里。</span>
                 </button>
-                <button type="button" className="btn btn-outline min-h-12" onClick={() => { setParentOpen(false); setGuideOpen(true); }}>
+                <button type="button" className="parent-row" onClick={() => { setParentOpen(false); setGuideOpen(true); }}>
                   玩法说明
                 </button>
-                <button type="button" className="btn btn-outline min-h-12" onClick={() => { setParentOpen(false); setSettingsOpen(true); }}>
+                <button type="button" className="parent-row" onClick={() => { setParentOpen(false); setSettingsOpen(true); }}>
                   声音
                 </button>
-                <button type="button" className="btn btn-ghost" onClick={() => setParentOpen(false)}>
+                <button type="button" className="parent-dismiss" onClick={() => setParentOpen(false)}>
                   关闭
                 </button>
               </div>
@@ -212,7 +217,11 @@ export default function App() {
             <h1 className="font-display text-[clamp(2rem,1.3rem+2.1vw,3rem)] leading-tight text-slate-900">
               {`经典数独：${classicDifficultyLabel}`}
             </h1>
-            <ActionControls actionLabel={actionLabel} onAction={handleAction} />
+            <ActionControls
+              actionLabel={actionLabel}
+              notesOn={state.notesMode}
+              onAction={handleAction}
+            />
           </section>
           <section className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
             <SudokuBoard
@@ -232,6 +241,7 @@ export default function App() {
                 kidMode={false}
                 hintText={state.hintText}
                 onAction={handleAction}
+                onNewGame={() => handleAction(GAME_ACTIONS.NEW_GAME)}
               />
               <NumberPicker selectedValue={state.selectedValue} onPick={handleNumberPick} />
               <button type="button" className="btn btn-outline min-h-12" onClick={backToChild}>

@@ -39,6 +39,18 @@ describe('kid adventure layout', () => {
     expect(app).toContain('家长');
   });
 
+  it('keeps the learning step separate from the compact tools', () => {
+    const board = readFileSync(new URL('../src/components/KidAdventureBoard.tsx', import.meta.url), 'utf8');
+    const css = readFileSync(new URL('../src/style.css', import.meta.url), 'utf8');
+    expect(board).toContain('className="kid-step"');
+    expect(board).toContain('再帮帮我');
+    expect(board).toContain('className="kid-hand"');
+    expect(board).not.toContain('kid-tools');
+    expect(css).toMatch(/\.kid-hand-btn\s*{[^}]*min-height:\s*48px/);
+    expect(css).toMatch(/\.kid-step\s*{[^}]*background:\s*#0f766e/);
+    expect(css).toMatch(/\.kid-more\s*{[^}]*text-decoration:\s*underline/);
+  });
+
   it('does not clamp kid cell block image to a fixed 44x44 box', () => {
     const component = readFileSync(
       new URL('../src/components/KidAdventureBoard.tsx', import.meta.url),

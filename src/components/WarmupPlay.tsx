@@ -5,7 +5,7 @@ import { buildWarmupModel } from '../stage/model';
 import { Playfield } from '../stage/Playfield';
 import { showFriend } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
-import { speakCoach } from '../audio/speak';
+import { HandButton, HearButton, ToolIcon } from './ToolIcon';
 import {
   WARMUP_STATIONS,
   advanceWarmup,
@@ -82,17 +82,18 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
 
   return (
     <section className="kid-card">
-      <div className="flex items-center justify-center gap-2" aria-label="三步准备">
-        {WARMUP_STATIONS.map((item, index) => (
-          <span
-            key={item.id}
-            className={[
-              'h-3 w-3 rounded-full',
-              index === play.stationIndex ? 'bg-sky-500' : index < play.stationIndex ? 'bg-emerald-400' : 'bg-slate-300',
-            ].join(' ')}
-          />
-        ))}
-      </div>
+      <ol className="warmup-steps" aria-label="三步准备">
+        {WARMUP_STATIONS.map((item, index) => {
+          const done = index < play.stationIndex;
+          const now = index === play.stationIndex;
+          return (
+            <li key={item.id} aria-current={now ? 'step' : undefined} data-step={done ? 'done' : now ? 'now' : 'later'}>
+              {done ? <ToolIcon name="check" /> : <span>{index + 1}</span>}
+              <span className="sr-only">{item.prompt}</span>
+            </li>
+          );
+        })}
+      </ol>
       <p className="kid-task">{station.prompt}</p>
       <Playfield
         model={model}
@@ -118,6 +119,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           </div>
         ) : null}
         <p>{play.feedback.text}</p>
+        <HearButton text={play.feedback.text} />
       </div>
       <div hidden={field !== 'fallback'} className="kid-pad">
         {[1, 2, 3, 4].map((value) => {
@@ -166,17 +168,10 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           {play.stationIndex === WARMUP_STATIONS.length - 1 ? '去小草地' : '下一个'}
         </button>
       )}
-      <div className="kid-tools">
-        <button
-          type="button"
-          className="kid-quiet"
-          onClick={() => speakCoach(play.feedback.tone === 'idle' ? station.prompt : play.feedback.text)}
-        >
-          听一听
-        </button>
-        <button
-          type="button"
-          className="kid-quiet"
+      <div className="kid-hand" role="group" aria-label="刚才的格子">
+        <HandButton
+          icon="undo"
+          label="撤销"
           disabled={play.past.length === 0}
           onClick={() => {
             const next = undoWarmup(play);
@@ -191,9 +186,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
             });
             setPlay(next);
           }}
-        >
-          撤销
-        </button>
+        />
       </div>
     </section>
   );

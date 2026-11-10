@@ -20,6 +20,7 @@ export function NumberPicker({ selectedValue, onPick }: NumberPickerProps) {
               key={`picker-${value}`}
               type="button"
               aria-label={`选择数字 ${value}`}
+              aria-pressed={selectedValue === value}
               className={[
                 'grid gap-1 rounded-xl border p-2 transition-all',
                 selectedValue === value

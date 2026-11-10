@@ -5,7 +5,7 @@ import { Playfield } from '../stage/Playfield';
 import { showFriend, type ShowFriendInput } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
 import { cueForMove } from '../kid-adventure/celebrate';
-import { speakCoach } from '../audio/speak';
+import { HandButton, HearButton, QuietLink, ToolIcon } from './ToolIcon';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
 import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, sixEntry } from '../kid-adventure/lessons';
@@ -30,6 +30,12 @@ import { buildLevelStory } from '../kid-adventure/progression';
 import { loadKidSession, restoreKidPlay, saveKidSession } from '../kid-adventure/session';
 import { conflictCells } from '../kid-adventure/rules';
 import { NumberBlock } from './NumberBlock';
+
+const canTake = (play: KidPlay) => {
+  if (play.completed || !play.selected) return false;
+  const { row, col } = play.selected;
+  return !play.givens[row][col] && play.board[row][col] !== 0;
+};
 
 type KidAdventureBoardProps = {
   totalStars: number;
@@ -284,6 +290,7 @@ export function KidAdventureBoard({
             </div>
           ) : null}
           <p>{play.feedback.text}</p>
+          <HearButton text={play.feedback.text} />
         </div>
       )}
 
@@ -296,9 +303,12 @@ export function KidAdventureBoard({
               </div>
             ))}
           </div>
-          <p className="text-lg font-black text-emerald-950" data-clear-copy>
-            {clearedText(geometry.size)}
-          </p>
+          <div className="kid-clear-line">
+            <p className="text-lg font-black text-emerald-950" data-clear-copy>
+              {clearedText(geometry.size)}
+            </p>
+            <HearButton text={clearedText(geometry.size)} />
+          </div>
           {soloLine ? <p className="text-sm font-bold text-emerald-800">{soloLine}</p> : null}
           {sixOffer ? (
             <button type="button" className="kid-go" onClick={() => startLesson(sixOffer.id)}>
@@ -358,7 +368,7 @@ export function KidAdventureBoard({
       {!play.completed && (
         <button
           type="button"
-          className="kid-quiet"
+          className="kid-step"
           onClick={() => {
             const next = hintKidPlay(playRef.current);
             commit(next);
@@ -369,68 +379,58 @@ export function KidAdventureBoard({
         </button>
       )}
 
-      <button type="button" className="kid-quiet" aria-expanded={moreTools} onClick={() => setMoreTools((open) => !open)}>
-        {moreTools ? '收起帮助' : '再帮帮我'}
-      </button>
-      {moreTools && (
-        <div className="kid-tools">
-          <button type="button" className="kid-quiet" onClick={() => speakCoach(play.feedback.text)}>
-            听一听
-          </button>
-          <button
-            type="button"
-            className="kid-quiet"
-            onClick={() => {
-              const prev = playRef.current;
-              const next = undoKidPlay(prev);
-              if (prev.completed && !next.completed) cheers.stop();
-              commit(next);
-              queueBoard(next, false);
-            }}
-            disabled={play.past.length === 0}
-          >
-            撤销
-          </button>
-          <button
-            type="button"
-            className="kid-quiet"
-            onClick={() => {
-              const next = redoKidPlay(playRef.current);
-              commit(next);
-              queueBoard(next, false);
-            }}
-            disabled={play.future.length === 0}
-          >
-            重做
-          </button>
-          <button
-            type="button"
-            className="kid-quiet"
-            onClick={() => {
-              const next = clearKidCell(playRef.current);
-              commit(next);
-              queueBoard(next, false);
-            }}
-            disabled={play.completed}
-          >
-            拿走
-          </button>
-          {play.lessonId ? (
-            <button type="button" className="kid-quiet kid-wide" onClick={() => startLesson(demoIdFor(play.lessonId!))}>
-              再看示范
-            </button>
-          ) : null}
-          <button type="button" className="kid-quiet kid-wide" onClick={onReplayWarmup}>
-            再找一次朋友
-          </button>
-        </div>
-      )}
+      <div className="kid-hand" role="group" aria-label="刚才的格子">
+        <HandButton
+          icon="undo"
+          label="撤销"
+          disabled={play.past.length === 0}
+          onClick={() => {
+            const prev = playRef.current;
+            const next = undoKidPlay(prev);
+            if (prev.completed && !next.completed) cheers.stop();
+            commit(next);
+            queueBoard(next, false);
+          }}
+        />
+        <HandButton
+          icon="redo"
+          label="重做"
+          disabled={play.future.length === 0}
+          onClick={() => {
+            const next = redoKidPlay(playRef.current);
+            commit(next);
+            queueBoard(next, false);
+          }}
+        />
+        <HandButton
+          icon="erase"
+          label="拿走"
+          disabled={!canTake(play)}
+          onClick={() => {
+            const next = clearKidCell(playRef.current);
+            commit(next);
+            queueBoard(next, false);
+          }}
+        />
+      </div>
 
       {!play.completed && !play.lessonId && forward ? (
-        <button type="button" className="kid-go" onClick={() => startLesson(forward.id)}>
-          {forward.label}
-        </button>
+        <QuietLink label={forward.label} onClick={() => startLesson(forward.id)} />
       ) : null}
+
+      <QuietLink
+        expanded={moreTools}
+        label={moreTools ? '收起帮助' : '再帮帮我'}
+        onClick={() => setMoreTools((open) => !open)}
+      />
+      {moreTools && (
+        <div className="kid-extra">
+          {play.lessonId ? (
+            <QuietLink icon="demo" label="再看示范" onClick={() => startLesson(demoIdFor(play.lessonId!))} />
+          ) : null}
+          <QuietLink icon="friends" label="再找一次朋友" onClick={onReplayWarmup} />
+        </div>
+      )}
 
       <div className="kid-levels" aria-label="进度">
         {KID_LEVELS.map((level) => {
@@ -443,11 +443,13 @@ export function KidAdventureBoard({
               type="button"
               disabled={locked}
               className="kid-level"
-              aria-current={current ? 'step' : undefined}
+              data-done={stars > 0 ? '1' : undefined}
+              aria-current={current && !play.lessonId ? 'step' : undefined}
               aria-label={`${level.name}${locked ? ' 还没打开' : stars > 0 ? ' 已完成' : ' 可以玩'}${current ? ' 现在' : ''}`}
               onClick={() => startLevel(level.id)}
             >
-              {level.id}
+              <span>{level.id}</span>
+              {stars > 0 ? <ToolIcon name="check" /> : null}
             </button>
           );
         })}

@@ -24,14 +24,14 @@ export function GameHeader({ onOpenGuide, onOpenSettings, onGoHome }: GameHeader
       <nav className="flex items-center gap-3 text-sm font-semibold text-slate-700 md:gap-8 md:text-base">
         <button
           type="button"
-          className="transition-colors hover:text-sky-600"
+          className="min-h-12 px-2 transition-colors hover:text-sky-600"
           onClick={onOpenGuide}
         >
           玩法说明
         </button>
         <button
           type="button"
-          className="transition-colors hover:text-sky-600"
+          className="min-h-12 px-2 transition-colors hover:text-sky-600"
           onClick={onOpenSettings}
         >
           设置
