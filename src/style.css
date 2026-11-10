@@ -231,6 +231,21 @@
     background: #f8fafc;
   }
 
+  .kid-grid-six {
+    width: min(100%, 22rem);
+    gap: 6px;
+  }
+
+  .kid-box-six {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 3px;
+    padding: 3px;
+  }
+
+  .kid-grid-six .kid-box:nth-child(even) {
+    background: #fff4e0;
+  }
+
   .kid-cell {
     @apply grid w-full place-items-center overflow-hidden rounded-xl border border-slate-200 bg-white text-2xl font-black text-slate-800;
     aspect-ratio: 1 / 1;
@@ -426,6 +441,10 @@
     gap: 10px;
   }
 
+  .kid-pad-six {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .kid-pad button {
     min-height: 72px;
     border-radius: 16px;
@@ -433,6 +452,10 @@
     background: #fff;
     color: #0f172a;
     font-weight: 800;
+  }
+
+  .kid-pad.kid-pad-six button {
+    min-height: 64px;
   }
 
   .kid-pad button:active {
@@ -565,6 +588,10 @@
     height: auto;
     aspect-ratio: 1;
     min-width: 0;
+  }
+
+  .cheer-friends-six .cheer-friend {
+    width: min(4rem, calc((100% - 2.5rem) / 6));
   }
 
   .cheer-friend:nth-child(2) {

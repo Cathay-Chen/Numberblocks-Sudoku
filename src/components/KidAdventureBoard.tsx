@@ -4,10 +4,11 @@ import { cueForMove } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
-import { continuation, lessonById, nextLessonStep, pathIsClear } from '../kid-adventure/lessons';
+import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, sixEntry } from '../kid-adventure/lessons';
 import { chooseOpening } from '../kid-adventure/opening';
 import {
   KID_CLEAR_STARS,
+  clearedText,
   clearKidCell,
   createKidPlay,
   createLessonPlay,
@@ -20,6 +21,7 @@ import {
   undoKidPlay,
   type KidPlay,
 } from '../kid-adventure/play';
+import { geometryOf } from '../kid-adventure/rules';
 import { buildLevelStory } from '../kid-adventure/progression';
 import { loadKidSession, restoreKidPlay, saveKidSession } from '../kid-adventure/session';
 import { conflictCells } from '../kid-adventure/rules';
@@ -72,6 +74,9 @@ export function KidAdventureBoard({
     (play.completed && !play.lessonId && play.levelId === 6 && levelStars.slice(0, 5).every((stars) => stars > 0));
   const forward = sixReady ? continuation(learning) : null;
   const lessonNext = play.lessonId ? nextLessonStep(play.lessonId) : null;
+  const geometry = geometryOf(play.board);
+  const stacks = geometry.size / geometry.boxCols;
+  const sixOffer = play.lessonId && play.board.length === 4 ? sixEntry(learning) : null;
   const soloLine = play.lessonId && play.completed ? kidSoloLine(play.hintsUsed) : null;
   const conflicts = conflictCells(play.board);
   const nextLevelId = play.levelId < KID_LEVELS.length ? play.levelId + 1 : null;
@@ -170,15 +175,18 @@ export function KidAdventureBoard({
     <section className="kid-card">
       <h2 className="kid-task">{task}</h2>
 
-                <div className={['kid-grid', play.completed ? 'board-clear' : ''].join(' ')} aria-label="四宫数独">
-        {[0, 1, 2, 3].map((box) => {
-          const startRow = Math.floor(box / 2) * 2;
-          const startCol = (box % 2) * 2;
+                <div
+                  className={['kid-grid', geometry.size === 6 ? 'kid-grid-six' : '', play.completed ? 'board-clear' : ''].join(' ')}
+                  aria-label={geometry.size === 6 ? '六宫数独' : '四宫数独'}
+                >
+        {Array.from({ length: (geometry.size / geometry.boxRows) * stacks }, (_, box) => {
+          const startRow = Math.floor(box / stacks) * geometry.boxRows;
+          const startCol = (box % stacks) * geometry.boxCols;
           return (
-            <div key={box} className="kid-box" aria-label={`小宫 ${box + 1}`}>
-              {[0, 1, 2, 3].map((offset) => {
-                const row = startRow + Math.floor(offset / 2);
-                const col = startCol + (offset % 2);
+            <div key={box} className={geometry.size === 6 ? 'kid-box kid-box-six' : 'kid-box'} aria-label={`小宫 ${box + 1}`}>
+              {Array.from({ length: geometry.boxRows * geometry.boxCols }, (_, offset) => {
+                const row = startRow + Math.floor(offset / geometry.boxCols);
+                const col = startCol + (offset % geometry.boxCols);
                 const value = play.board[row][col];
                 const key = `${row}-${col}`;
                 const selected = play.selected?.row === row && play.selected?.col === col;
@@ -224,17 +232,22 @@ export function KidAdventureBoard({
 
       {play.completed && (
         <div className="grid gap-3 text-center">
-          <div className="cheer-friends" aria-hidden="true">
-            {[1, 2, 3, 4].map((value) => (
+          <div className={geometry.size === 6 ? 'cheer-friends cheer-friends-six' : 'cheer-friends'} aria-hidden="true">
+            {geometry.digits.map((value) => (
               <div key={value} className="cheer-friend">
                 <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
               </div>
             ))}
           </div>
-          <p className="text-lg font-black text-emerald-950">四行、四列、四个小宫都齐了。</p>
+          <p className="text-lg font-black text-emerald-950">{clearedText(geometry.size)}</p>
           {soloLine ? <p className="text-sm font-bold text-emerald-800">{soloLine}</p> : null}
+          {sixOffer ? (
+            <button type="button" className="kid-go" onClick={() => startLesson(sixOffer.id)}>
+              {sixOffer.label}
+            </button>
+          ) : null}
           {lessonNext ? (
-            <button type="button" className="kid-go" onClick={() => startLesson(lessonNext.id)}>
+            <button type="button" className={sixOffer ? 'kid-again' : 'kid-go'} onClick={() => startLesson(lessonNext.id)}>
               {lessonNext.label}
             </button>
           ) : nextLevelId ? (
@@ -262,8 +275,8 @@ export function KidAdventureBoard({
       )}
 
       {!play.completed && (
-        <div className="kid-pad">
-          {[1, 2, 3, 4].map((value) => {
+        <div className={geometry.size === 6 ? 'kid-pad kid-pad-six' : 'kid-pad'}>
+          {geometry.digits.map((value) => {
             const mark =
               play.feedback.value === value ? (play.feedback.tone === 'conflict' ? '重复' : play.feedback.tone === 'placed' ? '刚放' : '') : '';
             return (
@@ -317,7 +330,7 @@ export function KidAdventureBoard({
             拿走
           </button>
           {play.lessonId ? (
-            <button type="button" className="kid-quiet kid-wide" onClick={() => startLesson('seat-demo')}>
+            <button type="button" className="kid-quiet kid-wide" onClick={() => startLesson(demoIdFor(play.lessonId!))}>
               再看示范
             </button>
           ) : null}

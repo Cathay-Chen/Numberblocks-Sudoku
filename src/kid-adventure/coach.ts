@@ -3,14 +3,16 @@ import {
   findDuplicate,
   findLastInHouse,
   findUnfillableCell,
+  geometryOf,
   houseLabel,
   housesTouching,
   kidCandidates,
   type HouseKind,
   type KidCell,
+  type KidGeometry,
 } from './rules';
 
-const DIGITS = [1, 2, 3, 4];
+const COUNT_WORD = ['', '一', '两', '三', '四', '五', '六'];
 
 export type CoachKind = 'duplicate' | 'stuck' | 'last-empty' | 'only-seat' | 'none';
 export type CoachStage = 'look' | 'why' | 'friend';
@@ -101,11 +103,12 @@ export const coachLadder = (board: number[][], givens?: boolean[][]): CoachStep[
   const seat = findOnlySeat(board);
   if (seat) return onlySeatLadder(board, seat);
 
+  const geometry = geometryOf(board);
   return [
     {
       kind: 'none',
       stage: 'look',
-      text: '先找已经有三个朋友的一行、一列或一小宫。',
+      text: `先找已经有${COUNT_WORD[geometry.size - 1]}个朋友的一行、一列或一小宫。`,
       value: null,
       cells: [],
       focus: null,
@@ -123,11 +126,12 @@ type OnlySeat = {
 };
 
 const findOnlySeat = (board: number[][]): OnlySeat | null => {
-  for (const house of allKidHouses()) {
+  const geometry = geometryOf(board);
+  for (const house of allKidHouses(geometry)) {
     const filled = new Set(
       house.cells.map((cell) => board[cell.row][cell.col]).filter((value) => value !== 0)
     );
-    for (const digit of DIGITS) {
+    for (const digit of geometry.digits) {
       if (filled.has(digit)) continue;
       const seats = house.cells.filter(
         (cell) => board[cell.row][cell.col] === 0 && kidCandidates(board, cell.row, cell.col).includes(digit)
@@ -151,7 +155,7 @@ const findOnlySeat = (board: number[][]): OnlySeat | null => {
 };
 
 const onlySeatLadder = (board: number[][], seat: OnlySeat): CoachStep[] => {
-  const reason = blockingReason(board, seat);
+  const reason = blockingReason(board, seat, geometryOf(board));
   return [
     {
       kind: 'only-seat',
@@ -183,11 +187,12 @@ const onlySeatLadder = (board: number[][], seat: OnlySeat): CoachStep[] => {
 // 第二步圈住挡住的那一行或那一列，座位留到最后一句。
 const blockingReason = (
   board: number[][],
-  seat: OnlySeat
+  seat: OnlySeat,
+  geometry: KidGeometry
 ): { text: string; cells: KidCell[] } => {
   const groups = new Map<string, { label: string; cells: KidCell[]; hits: number }>();
   for (const cell of seat.blocked) {
-    for (const house of housesTouching(cell.row, cell.col)) {
+    for (const house of housesTouching(cell.row, cell.col, geometry)) {
       if (house.kind === seat.houseKind && house.index === seat.houseIndex) continue;
       const holdsDigit = house.cells.some((item) => board[item.row][item.col] === seat.digit);
       if (!holdsDigit) continue;

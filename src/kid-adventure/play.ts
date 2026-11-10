@@ -2,6 +2,7 @@ import { coachLadder } from './coach';
 import { createKidLevelState } from './engine';
 import { lessonById } from './lessons';
 import {
+  boxWithOneEmpty,
   cloneKidBoard,
   conflictForPlacement,
   describeConflict,
@@ -44,6 +45,9 @@ const idle = (text: string): KidFeedback => ({ tone: 'idle', text, value: null }
 const PATH_PLACE_TEXT = '放好了。再找只剩一个空位的地方。';
 const LESSON_PLACE_TEXT = '放好了。';
 
+export const clearedText = (size: number): string =>
+  size === 6 ? '六行、六列、六个小宫都齐了。' : '四行、四列、四个小宫都齐了。';
+
 const remember = (play: KidPlay): Pick<KidPlay, 'past' | 'future'> => {
   const past = [...play.past, cloneKidBoard(play.board)];
   if (past.length > KID_HISTORY_LIMIT) past.shift();
@@ -63,10 +67,10 @@ export const kidPlacedScore = (play: KidPlay): number => {
 
 const KID_DIGITS = [1, 2, 3, 4];
 
-// 第一行若只剩一个空位，把那一行亮出来。缺的数字从这一行数出来，不读答案。
+// 第一行若只剩一个空位，把那一行亮出来。缺的数字从这一行数出来，不读答案。6×6 不走这里。
 export const greetLikeWarmup = (play: KidPlay): KidPlay => {
   const row = play.board[0];
-  if (!row || row.filter((value) => value === 0).length !== 1) return play;
+  if (!row || row.length !== 4 || row.filter((value) => value === 0).length !== 1) return play;
   const missing = KID_DIGITS.find((digit) => !row.includes(digit));
   if (!missing) return play;
   return {
@@ -101,7 +105,7 @@ export const createLessonPlay = (lessonId: string): KidPlay | null => {
   const lesson = lessonById(lessonId);
   if (!lesson) return null;
   const board = lesson.puzzle.map((row) => row.slice());
-  return {
+  const play: KidPlay = {
     levelId: 0,
     lessonId: lesson.id,
     board,
@@ -117,6 +121,18 @@ export const createLessonPlay = (lessonId: string): KidPlay | null => {
     focus: [],
     coachKey: '',
     coachStep: 0,
+  };
+  return lesson.id === 'six-demo' ? showSixShape(play) : play;
+};
+
+// 开场只圈出那一个 2×3 宫，不报缺的是谁。
+const showSixShape = (play: KidPlay): KidPlay => {
+  const box = boxWithOneEmpty(play.board);
+  if (!box) return play;
+  return {
+    ...play,
+    focus: box.cells,
+    feedback: { tone: 'hint', text: '六个朋友住在这个粗框里。', value: null },
   };
 };
 
@@ -176,7 +192,7 @@ export const placeKidNumber = (play: KidPlay, value: number): KidPlay => {
       completed: true,
       feedback: {
         tone: 'done',
-        text: '四行、四列、四个小宫都齐了。',
+        text: clearedText(board.length),
         value: null,
       },
     };

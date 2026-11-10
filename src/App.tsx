@@ -10,7 +10,7 @@ import { SudokuBoard } from './components/SudokuBoard';
 import { TipBanner } from './components/TipBanner';
 import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
-import { lessonParentLines } from './kid-adventure/lessons';
+import { lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
 
 type AudioSettings = {
@@ -167,6 +167,9 @@ export default function App() {
                   {lessonParentLines(state.learning).map((line) => (
                     <p key={line}>{line}</p>
                   ))}
+                  {pathIsClear(state.kidLevelStars) && sixGateVisible(state.learning)
+                    ? sixGateLines(state.learning).map((line) => <p key={line}>{line}</p>)
+                    : null}
                 </div>
                 <button type="button" className="btn btn-outline min-h-12" onClick={openClassic}>
                   经典数独
@@ -263,6 +266,7 @@ function Guide({ onClose }: { onClose: () => void }) {
             <p>小朋友先找少了的朋友、两个一样的朋友，再进入 4×4 小草地。</p>
             <p>每一行、每一列、每一小宫都要有 1、2、3、4。放重复了会指出那一组，可以撤销再试。</p>
             <p>六关之后，学一个朋友只剩一个座位。看一步先指出朋友和那一组，再说谁挡住了。</p>
+            <p>自己练没看提示做完，复习里的旧方法和新方法也各有一次没看提示做完，就可以看六个朋友。小宫是两行、三列。</p>
             <p>经典数独在「家长」里，仍是 9×9，错误达到上限会结束这一局。</p>
           </div>
           <div className="mt-3 flex justify-end">
