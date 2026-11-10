@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { cheers } from './audio/celebration';
-import { StageHost } from './stage/StageHost';
 import { sfx } from './audio/sfx';
 import { ActionControls } from './components/ActionControls';
 import { GameHeader } from './components/GameHeader';
@@ -135,7 +134,6 @@ export default function App() {
           </div>
         </header>
         <main className="kid-main kid-play">
-          <StageHost />
           {showWarmup ? (
             <WarmupPlay
               onDone={() => {

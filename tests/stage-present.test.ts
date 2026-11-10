@@ -4,7 +4,7 @@ import { sfx } from '../src/audio/sfx';
 import { cueForMove } from '../src/kid-adventure/celebrate';
 import { createKidPlay, nextLevelStars, placeKidNumber } from '../src/kid-adventure/play';
 import { cheers } from '../src/audio/celebration';
-import { explainBand } from '../src/stage/spots';
+import { cheerPlacement, explainBand } from '../src/stage/spots';
 import { friendListenerCount, lastFriendCue, showFriend, subscribeFriend } from '../src/stage/present';
 
 const fakeAudio = (): CelebrationAudio => ({
@@ -105,6 +105,15 @@ describe('friend stage cues', () => {
     const four = Array.from({ length: 4 }, () => Array(4).fill(0));
     expect(explainBand(four, [{ row: 0, col: 0 }, { row: 0, col: 1 }]).every((cell) => cell.row === 0)).toBe(true);
     expect(explainBand(four, [{ row: 0, col: 3 }, { row: 2, col: 3 }]).every((cell) => cell.col === 3)).toBe(true);
+  });
+
+  it('keeps the clear lineup above the sentence even when the slot runs into it', () => {
+    const resting = cheerPlacement({ x: 12, y: 220, w: 72, h: 72 }, 300);
+    expect(resting.y + resting.size / 2).toBeLessThanOrEqual(300 - 8);
+    expect(resting.size).toBe(72);
+    const crowded = cheerPlacement({ x: 12, y: 240, w: 80, h: 80 }, 260);
+    expect(crowded.y + crowded.size / 2).toBeLessThanOrEqual(260 - 8);
+    expect(crowded.size).toBeLessThan(80);
   });
 
   it('does not score or celebrate again after the board is already finished', () => {

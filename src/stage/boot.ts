@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { FriendScene } from './FriendScene';
+import { PlayfieldScene } from './PlayfieldScene';
 
 export const createFriendGame = (parent: HTMLElement, reducedMotion: boolean): Phaser.Game => {
   const width = Math.max(64, parent.clientWidth || 280);
@@ -20,7 +20,7 @@ export const createFriendGame = (parent: HTMLElement, reducedMotion: boolean): P
       width,
       height,
     },
-    scene: [FriendScene],
+    scene: [PlayfieldScene],
     callbacks: {
       preBoot: (game) => {
         game.registry.set('stageHost', parent);

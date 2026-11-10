@@ -2,7 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import type Phaser from 'phaser';
 import { loadStage } from './load';
 
-export function StageHost() {
+export function StageHost({
+  height = 420,
+  onMode,
+}: {
+  height?: number;
+  onMode?: (mode: 'live' | 'fallback') => void;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [fallback, setFallback] = useState(false);
 
@@ -26,12 +32,14 @@ export function StageHost() {
         game = createFriendGame(host, reducedMotion);
         host.dataset.stageBoot = 'live';
         home?.setAttribute('data-stage-live', '1');
+        onMode?.('live');
         fit();
       })
       .catch(() => {
         if (cancelled) return;
         host.dataset.stageBoot = 'error';
         setFallback(true);
+        onMode?.('fallback');
       });
 
     const onVisibility = () => {
@@ -51,12 +59,23 @@ export function StageHost() {
       observer.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
       home?.removeAttribute('data-stage-live');
-      game?.destroy(true);
+      try {
+        game?.destroy(true);
+      } catch {
+        // 切换场景时游戏可能已经拆到一半。
+      }
       game = null;
     };
   }, []);
 
   return (
-    <div ref={hostRef} className="friend-stage" data-stage={fallback ? 'fallback' : 'friends'} aria-hidden="true" />
+    <div
+      ref={hostRef}
+      className="friend-stage play-stage"
+      style={{ height }}
+      data-stage={fallback ? 'fallback' : 'friends'}
+      data-playfield="boot"
+      aria-hidden="true"
+    />
   );
 }

@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { cheers } from '../audio/celebration';
 import { cueForWarmup } from '../kid-adventure/celebrate';
+import { buildWarmupModel } from '../stage/model';
+import { Playfield } from '../stage/Playfield';
 import { showFriend } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
 import { speakCoach } from '../audio/speak';
@@ -21,8 +23,13 @@ type WarmupPlayProps = {
 
 export function WarmupPlay({ onDone }: WarmupPlayProps) {
   const [play, setPlay] = useState<WarmupState>(() => createWarmupPlay());
+  const [field, setField] = useState<'boot' | 'live' | 'fallback'>('boot');
   const queueCue = useStageCue();
   const station = WARMUP_STATIONS[play.stationIndex] ?? WARMUP_STATIONS[0];
+  const model = useMemo(
+    () => buildWarmupModel({ ...play, house: station.house }),
+    [play, station.house]
+  );
   const highlights = new Set(play.highlight);
 
   useEffect(() => {
@@ -33,7 +40,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
     };
   }, []);
 
-  const cells = station.house === 'box' ? (
+  const domCells = station.house === 'box' ? (
     <div className="kid-box warmup-box" data-board="warmup" aria-label="小宫">
       {play.cells.map((value, index) => (
         <CellButton
@@ -87,7 +94,24 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
         ))}
       </div>
       <p className="kid-task">{station.prompt}</p>
-      {cells}
+      <Playfield
+        model={model}
+        height={station.house === 'box' ? 320 : 280}
+        onMode={setField}
+        onCell={(_row, col) => {
+          const prev = play;
+          const next = tapWarmupCell(prev, col);
+          setPlay(next);
+          playWarmupCue(prev, next, queueCue);
+        }}
+        onPlace={(_row, _col, value) => {
+          const prev = play;
+          const next = placeWarmupFriend(prev, value);
+          setPlay(next);
+          playWarmupCue(prev, next, queueCue);
+        }}
+      />
+      <div hidden={field !== 'fallback'}>{domCells}</div>
       <div className="kid-note" aria-live="polite">
         {play.feedback.value ? (
           <div className={['h-12 w-12 shrink-0', play.cleared ? 'warmup-pop' : ''].join(' ')}>
@@ -96,7 +120,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
         ) : null}
         <p>{play.feedback.text}</p>
       </div>
-      <div className="kid-pad">
+      <div hidden={field !== 'fallback'} className="kid-pad">
         {[1, 2, 3, 4].map((value) => {
           const mark =
             play.feedback.value === value

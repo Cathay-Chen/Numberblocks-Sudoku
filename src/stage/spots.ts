@@ -5,6 +5,26 @@ export type StageCell = {
   col: number;
 };
 
+export type StageBox = {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+};
+
+// 过关朋友停在自己的格子里，底边停在完成句上方，避免跳一下就盖住字。
+export const cheerPlacement = (
+  slot: StageBox,
+  limitTop: number | null
+): { x: number; y: number; size: number } => {
+  const gap = 8;
+  const ceiling = limitTop == null ? slot.y + slot.h : limitTop - gap;
+  const available = Math.max(0, ceiling - slot.y);
+  const size = Math.min(slot.w, slot.h, available);
+  const y = Math.min(slot.y + slot.h / 2, ceiling - size / 2);
+  return { x: slot.x + slot.w / 2, y, size };
+};
+
 const same = (left: StageCell, right: StageCell) => left.row === right.row && left.col === right.col;
 
 const copy = (cell: StageCell): StageCell => ({ row: cell.row, col: cell.col });

@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cheers } from '../audio/celebration';
+import { buildGridModel } from '../stage/model';
+import { Playfield } from '../stage/Playfield';
 import { showFriend, type ShowFriendInput } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
 import { cueForMove } from '../kid-adventure/celebrate';
@@ -68,6 +70,8 @@ export function KidAdventureBoard({
   const pulseTimer = useRef(0);
   const guideTimer = useRef(0);
   const queueCue = useStageCue();
+  const [field, setField] = useState<'boot' | 'live' | 'fallback'>('boot');
+  const model = useMemo(() => buildGridModel(play), [play]);
   const unlockedLevels = computeUnlockedLevels(totalStars);
   const story = buildLevelStory(play.levelId);
   const lesson = play.lessonId ? lessonById(play.lessonId) : null;
@@ -125,8 +129,8 @@ export function KidAdventureBoard({
     guideTimer.current = window.setTimeout(() => setGuideEmpties(false), 800);
   };
 
-  const placeFromPicker = (value: number) => {
-    const current = playRef.current;
+  const placeFromPicker = (value: number, cell?: { row: number; col: number }) => {
+    const current = cell ? selectKidCell(playRef.current, cell) : playRef.current;
     const aimed = current.selected ? current : { ...current, selected: emptyFocusTarget(current) };
     if (!aimed.selected) {
       markGuide();
@@ -218,8 +222,16 @@ export function KidAdventureBoard({
   return (
     <section className="kid-card">
       <h2 className="kid-task">{task}</h2>
+      <Playfield
+        model={model}
+        height={geometry.size === 6 ? 540 : 460}
+        onMode={setField}
+        onCell={(row, col) => commit(selectKidCell(playRef.current, { row, col }))}
+        onPlace={(row, col, value) => placeFromPicker(value, row < 0 ? undefined : { row, col })}
+      />
 
                 <div
+                  hidden={field !== 'fallback'}
                   className={['kid-grid', geometry.size === 6 ? 'kid-grid-six' : '', play.completed ? 'board-clear' : ''].join(' ')}
                   data-board={geometry.size === 6 ? 'six' : 'four'}
                   aria-label={geometry.size === 6 ? '六宫数独' : '四宫数独'}
@@ -278,14 +290,16 @@ export function KidAdventureBoard({
 
       {play.completed && (
         <div className="grid gap-3 text-center">
-          <div className={geometry.size === 6 ? 'cheer-friends cheer-friends-six' : 'cheer-friends'} aria-hidden="true">
+          <div hidden={field !== 'fallback'} className={geometry.size === 6 ? 'cheer-friends cheer-friends-six' : 'cheer-friends'} aria-hidden="true">
             {geometry.digits.map((value) => (
               <div key={value} className="cheer-friend" data-cheer={value}>
                 <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
               </div>
             ))}
           </div>
-          <p className="text-lg font-black text-emerald-950">{clearedText(geometry.size)}</p>
+          <p className="text-lg font-black text-emerald-950" data-clear-copy>
+            {clearedText(geometry.size)}
+          </p>
           {soloLine ? <p className="text-sm font-bold text-emerald-800">{soloLine}</p> : null}
           {sixOffer ? (
             <button type="button" className="kid-go" onClick={() => startLesson(sixOffer.id)}>
@@ -321,7 +335,7 @@ export function KidAdventureBoard({
       )}
 
       {!play.completed && (
-        <div className={geometry.size === 6 ? 'kid-pad kid-pad-six' : 'kid-pad'}>
+        <div hidden={field !== 'fallback'} className={geometry.size === 6 ? 'kid-pad kid-pad-six' : 'kid-pad'}>
           {geometry.digits.map((value) => {
             const mark =
               play.feedback.value === value ? (play.feedback.tone === 'conflict' ? '重复' : play.feedback.tone === 'placed' ? '刚放' : '') : '';
