@@ -12,6 +12,22 @@ import {
 
 export const KID_HISTORY_LIMIT = 80;
 export const KID_CLEAR_STARS = 3;
+
+// 同一关重复记星时保持原总数。过关效果在严格模式下会再跑一次，不能因此多加星星。
+export const nextLevelStars = (
+  levelStars: number[],
+  total: number,
+  levelId: number,
+  earned: number
+): { levelStars: number[]; total: number } => {
+  const index = levelId - 1;
+  if (index < 0 || index >= levelStars.length) return { levelStars, total };
+  if (levelStars[index] >= earned) return { levelStars, total };
+  const next = levelStars.slice();
+  const delta = earned - next[index];
+  next[index] = earned;
+  return { levelStars: next, total: total + delta };
+};
 const KID_PLACEMENT_SCORE = 10;
 
 export type KidFeedbackTone = 'idle' | 'placed' | 'conflict' | 'hint' | 'stuck' | 'done';

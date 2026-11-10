@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { cheers } from '../audio/celebration';
 import { cueForWarmup } from '../kid-adventure/celebrate';
 import { showFriend } from '../stage/present';
+import { useStageCue } from '../stage/useStageCue';
 import { speakCoach } from '../audio/speak';
 import {
   WARMUP_STATIONS,
@@ -20,6 +21,7 @@ type WarmupPlayProps = {
 
 export function WarmupPlay({ onDone }: WarmupPlayProps) {
   const [play, setPlay] = useState<WarmupState>(() => createWarmupPlay());
+  const queueCue = useStageCue();
   const station = WARMUP_STATIONS[play.stationIndex] ?? WARMUP_STATIONS[0];
   const highlights = new Set(play.highlight);
 
@@ -32,7 +34,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
   }, []);
 
   const cells = station.house === 'box' ? (
-    <div className="kid-box warmup-box" aria-label="小宫">
+    <div className="kid-box warmup-box" data-board="warmup" aria-label="小宫">
       {play.cells.map((value, index) => (
         <CellButton
           key={`${play.stationIndex}-${index}`}
@@ -45,13 +47,13 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
             const prev = play;
             const next = tapWarmupCell(prev, index);
             setPlay(next);
-            playWarmupCue(prev, next);
+            playWarmupCue(prev, next, queueCue);
           }}
         />
       ))}
     </div>
   ) : (
-    <div className="warmup-row" aria-label="一行朋友">
+    <div className="warmup-row" data-board="warmup" aria-label="一行朋友">
       {play.cells.map((value, index) => (
         <CellButton
           key={`${play.stationIndex}-${index}`}
@@ -64,7 +66,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
             const prev = play;
             const next = tapWarmupCell(prev, index);
             setPlay(next);
-            playWarmupCue(prev, next);
+            playWarmupCue(prev, next, queueCue);
           }}
         />
       ))}
@@ -113,7 +115,7 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
                 const prev = play;
                 const next = placeWarmupFriend(prev, value);
                 setPlay(next);
-                playWarmupCue(prev, next);
+                playWarmupCue(prev, next, queueCue);
               }}
             >
               <span className="mx-auto block h-10 w-10">
@@ -132,7 +134,10 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
             cheers.stop();
             const next = advanceWarmup(play);
             if (next.finished) onDone();
-            else setPlay(next);
+            else {
+              queueCue({ kind: 'idle', value: null, count: 4, cells: [], focus: null, sound: false });
+              setPlay(next);
+            }
           }}
         >
           {play.stationIndex === WARMUP_STATIONS.length - 1 ? '去小草地' : '下一个'}
@@ -153,6 +158,14 @@ export function WarmupPlay({ onDone }: WarmupPlayProps) {
           onClick={() => {
             const next = undoWarmup(play);
             if (play.cleared && !next.cleared) cheers.stop();
+            queueCue({
+              kind: 'idle',
+              value: next.feedback.value,
+              count: 4,
+              cells: [],
+              focus: null,
+              sound: false,
+            });
             setPlay(next);
           }}
         >
@@ -169,17 +182,30 @@ const placedHere = (
   value: number
 ) => (play.feedback.tone === 'found' || play.feedback.tone === 'done') && play.highlight.includes(index) && value !== 0;
 
-const playWarmupCue = (prev: WarmupState, next: WarmupState) => {
+const playWarmupCue = (
+  prev: WarmupState,
+  next: WarmupState,
+  queueCue: (cue: Parameters<typeof showFriend>[0]) => void
+) => {
   const cue = cueForWarmup({
     beforeComplete: prev.cleared,
     afterComplete: next.cleared,
     tone: next.feedback.tone,
   });
+  const cells = next.highlight.map((index) => ({ row: 0, col: index }));
+  const focus = cells[cells.length - 1] ?? null;
   if (!cue) {
-    showFriend({ kind: 'idle', value: next.feedback.value, count: 4, sound: false });
+    queueCue({ kind: 'idle', value: next.feedback.value, count: 4, cells, focus, sound: false });
     return;
   }
-  showFriend({ kind: cue, value: next.feedback.value, count: 4 });
+  queueCue({
+    kind: cue,
+    value: next.feedback.value,
+    count: 4,
+    cells,
+    focus,
+    sound: true,
+  });
 };
 
 function CellButton({
@@ -207,6 +233,7 @@ function CellButton({
         !acked && !wrong && highlighted ? 'warmup-cell-hot' : '',
         value === 0 ? 'warmup-cell-empty' : '',
       ].join(' ')}
+      data-cell={`0-${index}`}
       aria-label={value === 0 ? `空位 ${index + 1}` : `朋友 ${value}`}
       onClick={onClick}
     >

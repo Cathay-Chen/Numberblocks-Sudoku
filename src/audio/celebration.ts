@@ -66,6 +66,7 @@ export class CelebrationSounds {
   private timer = 0;
   private generation = 0;
   private feedbackAt = 0;
+  private active: CelebrationKind | null = null;
   private createAudio: (src: string) => CelebrationAudio;
   private buffers = new Map<string, AudioBuffer>();
 
@@ -77,9 +78,19 @@ export class CelebrationSounds {
     return Date.now() - this.feedbackAt < 40;
   }
 
+  playing(): CelebrationKind | null {
+    return this.active;
+  }
+
   play(kind: CelebrationKind) {
+    if (!sfx.feedbackAudible()) {
+      this.stop();
+      return;
+    }
+    // 同一种声音还在播时不重开，也不叠第二份。换成另一种才停掉前一声。
+    if (this.active === kind) return;
     this.stop();
-    if (!sfx.feedbackAudible()) return;
+    this.active = kind;
     this.feedbackAt = Date.now();
     const generation = ++this.generation;
     if (this.createAudio !== browserAudio || typeof AudioContext === 'undefined') {
@@ -139,7 +150,9 @@ export class CelebrationSounds {
       gain.connect(sharedContext.destination);
       const offset = Math.min(plan.startSec, Math.max(0, buffer.duration - 0.05));
       node.onended = () => {
-        if (this.node === node) this.node = null;
+        if (this.node !== node) return;
+        this.node = null;
+        this.active = null;
       };
       node.start(0, offset);
       this.node = node;
@@ -150,6 +163,7 @@ export class CelebrationSounds {
 
   stop() {
     this.generation += 1;
+    this.active = null;
     if (this.timer) {
       globalThis.clearTimeout(this.timer);
       this.timer = 0;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type Phaser from 'phaser';
+import { loadStage } from './load';
 
 export function StageHost() {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -8,17 +9,29 @@ export function StageHost() {
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
+    const home = host.parentElement;
+    host.dataset.stageBoot = 'start';
     let game: Phaser.Game | null = null;
     let cancelled = false;
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    void import('./boot')
+    const fit = () => {
+      if (!game || !host) return;
+      game.scale.resize(Math.max(64, host.clientWidth), Math.max(64, host.clientHeight));
+    };
+
+    void loadStage()
       .then(({ createFriendGame }) => {
         if (cancelled || !host.isConnected) return;
         game = createFriendGame(host, reducedMotion);
+        host.dataset.stageBoot = 'live';
+        home?.setAttribute('data-stage-live', '1');
+        fit();
       })
       .catch(() => {
-        if (!cancelled) setFallback(true);
+        if (cancelled) return;
+        host.dataset.stageBoot = 'error';
+        setFallback(true);
       });
 
     const onVisibility = () => {
@@ -29,8 +42,7 @@ export function StageHost() {
     document.addEventListener('visibilitychange', onVisibility);
 
     const observer = new ResizeObserver(() => {
-      if (!game || !host) return;
-      game.scale.resize(Math.max(64, host.clientWidth), 112);
+      fit();
     });
     observer.observe(host);
 
@@ -38,14 +50,13 @@ export function StageHost() {
       cancelled = true;
       observer.disconnect();
       document.removeEventListener('visibilitychange', onVisibility);
+      home?.removeAttribute('data-stage-live');
       game?.destroy(true);
       game = null;
     };
   }, []);
 
   return (
-    <div ref={hostRef} className="friend-stage" data-stage="friends" data-stage-cue="idle" aria-hidden="true">
-      {fallback ? <img className="friend-fallback" src="/character_01_1x.png" alt="" /> : null}
-    </div>
+    <div ref={hostRef} className="friend-stage" data-stage={fallback ? 'fallback' : 'friends'} aria-hidden="true" />
   );
 }

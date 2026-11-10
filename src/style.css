@@ -401,27 +401,28 @@
     font-size: 0.95rem;
   }
 
+  .kid-play {
+    position: relative;
+  }
+
   .friend-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 4;
     width: 100%;
-    max-width: 100%;
-    height: 112px;
-    margin-bottom: 8px;
+    height: 100%;
+    margin: 0;
+    overflow: hidden;
+    pointer-events: none;
   }
 
-  .friend-stage-canvas,
   .friend-stage canvas {
-    width: 100%;
-    max-width: 100%;
-    height: 112px;
     display: block;
+    pointer-events: none;
   }
 
-  .friend-fallback {
-    width: 72px;
-    height: 72px;
-    margin: 16px auto;
-    display: block;
-    object-fit: contain;
+  .kid-play:has(.friend-stage[data-stage-cue='board']:not([data-stage-drawn='0'])) .cheer-friend {
+    visibility: hidden;
   }
 
   .kid-card {

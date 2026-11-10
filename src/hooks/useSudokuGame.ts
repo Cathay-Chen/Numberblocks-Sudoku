@@ -16,6 +16,7 @@ import {
   isComplete,
 } from '../game/utils';
 import { recordAttempt, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
+import { nextLevelStars } from '../kid-adventure/play';
 import { loadKidProgress, progressCanBeReplaced, resolveWarmupDone, saveKidProgress } from '../kid-adventure/progression';
 
 type Snapshot = {
@@ -536,18 +537,12 @@ export function useSudokuGame() {
 
   const updateKidLevelStars = (levelId: number, starsEarned: number) => {
     setState((prev) => {
-      const index = levelId - 1;
-      if (index < 0 || index >= prev.kidLevelStars.length) return prev;
-      if (prev.kidLevelStars[index] >= starsEarned) return prev;
-
-      const nextLevelStars = prev.kidLevelStars.slice();
-      const delta = starsEarned - nextLevelStars[index];
-      nextLevelStars[index] = starsEarned;
-
+      const applied = nextLevelStars(prev.kidLevelStars, prev.stars, levelId, starsEarned);
+      if (applied.levelStars === prev.kidLevelStars) return prev;
       return {
         ...prev,
-        kidLevelStars: nextLevelStars,
-        stars: prev.stars + delta,
+        kidLevelStars: applied.levelStars,
+        stars: applied.total,
         hintText: `关卡 ${levelId} 星星更新为 ${starsEarned} 颗!`,
       };
     });

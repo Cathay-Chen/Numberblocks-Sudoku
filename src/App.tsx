@@ -87,7 +87,7 @@ export default function App() {
       const button = target.closest('button');
       if (!(button instanceof HTMLButtonElement)) return;
       if (button.disabled) return;
-      if (cheers.feedbackJustPlayed()) return;
+      if (cheers.playing() || cheers.feedbackJustPlayed()) return;
       sfx.playUiTap();
     };
 
@@ -134,7 +134,7 @@ export default function App() {
             </button>
           </div>
         </header>
-        <main className="kid-main">
+        <main className="kid-main kid-play">
           <StageHost />
           {showWarmup ? (
             <WarmupPlay

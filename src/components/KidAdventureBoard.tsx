@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { cheers } from '../audio/celebration';
-import { showFriend } from '../stage/present';
+import { showFriend, type ShowFriendInput } from '../stage/present';
+import { useStageCue } from '../stage/useStageCue';
 import { cueForMove } from '../kid-adventure/celebrate';
 import { speakCoach } from '../audio/speak';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
@@ -66,6 +67,7 @@ export function KidAdventureBoard({
   const playRef = useRef(play);
   const pulseTimer = useRef(0);
   const guideTimer = useRef(0);
+  const queueCue = useStageCue();
   const unlockedLevels = computeUnlockedLevels(totalStars);
   const story = buildLevelStory(play.levelId);
   const lesson = play.lessonId ? lessonById(play.lessonId) : null;
@@ -86,6 +88,29 @@ export function KidAdventureBoard({
   const commit = (next: KidPlay) => {
     playRef.current = next;
     setPlay(next);
+  };
+
+  const queueBoard = (next: KidPlay, sound: boolean) => {
+    const kind: ShowFriendInput['kind'] = next.completed
+      ? 'board'
+      : next.feedback.tone === 'conflict'
+        ? 'miss'
+        : next.feedback.tone === 'hint'
+          ? 'hint'
+          : next.feedback.tone === 'placed'
+            ? 'place'
+            : 'idle';
+    const cells =
+      kind === 'place' && next.selected ? [next.selected] : kind === 'board' || kind === 'idle' ? [] : next.focus;
+    queueCue({
+      kind,
+      value: next.feedback.value,
+      count: next.board.length,
+      cells,
+      focus: kind === 'miss' ? (next.focus[next.focus.length - 1] ?? next.selected) : next.selected,
+      board: next.board,
+      sound,
+    });
   };
 
   const markPulse = (key: string, kind: 'place' | 'miss') => {
@@ -120,11 +145,7 @@ export function KidAdventureBoard({
       afterComplete: next.completed,
       tone: next.feedback.tone,
     });
-    if (cue) {
-      showFriend({ kind: cue, value: next.feedback.value ?? value, count: next.board.length });
-    } else if (next.feedback.tone === 'hint') {
-      showFriend({ kind: 'hint', value: next.feedback.value, count: next.board.length, sound: false });
-    }
+    queueBoard(next, Boolean(cue));
     if (next.selected && cue === 'place') markPulse(`${next.selected.row}-${next.selected.col}`, 'place');
     if (cue === 'miss' && next.focus[0]) markPulse(`${next.focus[0].row}-${next.focus[0].col}`, 'miss');
   };
@@ -132,12 +153,7 @@ export function KidAdventureBoard({
   const startFresh = (next: KidPlay) => {
     window.speechSynthesis?.cancel();
     cheers.stop();
-    showFriend({
-      kind: next.completed ? 'board' : 'idle',
-      value: null,
-      count: next.board.length,
-      sound: false,
-    });
+    queueBoard(next, false);
     window.clearTimeout(pulseTimer.current);
     window.clearTimeout(guideTimer.current);
     setPulse(null);
@@ -162,9 +178,17 @@ export function KidAdventureBoard({
       kind: play.completed ? 'board' : play.feedback.tone === 'hint' ? 'hint' : 'idle',
       value: play.feedback.value,
       count: play.board.length,
+      cells: play.focus,
+      focus: play.selected,
+      board: play.board,
       sound: false,
     });
   }, []);
+
+  useEffect(() => {
+    if (!play.completed) return;
+    document.querySelector('[data-cheer="1"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [play.completed, play.levelId, play.lessonId]);
 
   useEffect(() => {
     if (!play.completed || play.lessonId) return;
@@ -197,6 +221,7 @@ export function KidAdventureBoard({
 
                 <div
                   className={['kid-grid', geometry.size === 6 ? 'kid-grid-six' : '', play.completed ? 'board-clear' : ''].join(' ')}
+                  data-board={geometry.size === 6 ? 'six' : 'four'}
                   aria-label={geometry.size === 6 ? '六宫数独' : '四宫数独'}
                 >
         {Array.from({ length: (geometry.size / geometry.boxRows) * stacks }, (_, box) => {
@@ -225,6 +250,7 @@ export function KidAdventureBoard({
                       guideEmpties && value === 0 ? 'kid-cell-need' : '',
                       focusKeys.has(key) && !wrong ? 'kid-cell-hint' : '',
                     ].join(' ')}
+                    data-cell={`${row}-${col}`}
                     aria-label={`第${row + 1}行第${col + 1}列${value === 0 ? '空格' : `数字${value}`}${selected ? '，选中' : ''}`}
                     onClick={() => commit(selectKidCell(playRef.current, { row, col }))}
                   >
@@ -254,7 +280,7 @@ export function KidAdventureBoard({
         <div className="grid gap-3 text-center">
           <div className={geometry.size === 6 ? 'cheer-friends cheer-friends-six' : 'cheer-friends'} aria-hidden="true">
             {geometry.digits.map((value) => (
-              <div key={value} className="cheer-friend">
+              <div key={value} className="cheer-friend" data-cheer={value}>
                 <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
               </div>
             ))}
@@ -323,12 +349,7 @@ export function KidAdventureBoard({
           onClick={() => {
             const next = hintKidPlay(playRef.current);
             commit(next);
-            showFriend({
-              kind: next.feedback.tone === 'conflict' ? 'miss' : 'hint',
-              value: next.feedback.value,
-              count: next.board.length,
-              sound: false,
-            });
+            queueBoard(next, false);
           }}
         >
           看一步
@@ -349,17 +370,36 @@ export function KidAdventureBoard({
             onClick={() => {
               const prev = playRef.current;
               const next = undoKidPlay(prev);
-              commit(next);
               if (prev.completed && !next.completed) cheers.stop();
+              commit(next);
+              queueBoard(next, false);
             }}
             disabled={play.past.length === 0}
           >
             撤销
           </button>
-          <button type="button" className="kid-quiet" onClick={() => commit(redoKidPlay(playRef.current))} disabled={play.future.length === 0}>
+          <button
+            type="button"
+            className="kid-quiet"
+            onClick={() => {
+              const next = redoKidPlay(playRef.current);
+              commit(next);
+              queueBoard(next, false);
+            }}
+            disabled={play.future.length === 0}
+          >
             重做
           </button>
-          <button type="button" className="kid-quiet" onClick={() => commit(clearKidCell(playRef.current))} disabled={play.completed}>
+          <button
+            type="button"
+            className="kid-quiet"
+            onClick={() => {
+              const next = clearKidCell(playRef.current);
+              commit(next);
+              queueBoard(next, false);
+            }}
+            disabled={play.completed}
+          >
             拿走
           </button>
           {play.lessonId ? (
