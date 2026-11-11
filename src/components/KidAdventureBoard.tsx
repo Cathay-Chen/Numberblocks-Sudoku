@@ -9,7 +9,7 @@ import { ReplaceDialog, focusSameControl } from './ReplaceDialog';
 import { HandButton, HearButton, QuietLink, ToolIcon } from './ToolIcon';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
-import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, sixEntry } from '../kid-adventure/lessons';
+import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, SIX_DEMO_ID, sixEntry } from '../kid-adventure/lessons';
 import { chooseOpening } from '../kid-adventure/opening';
 import {
   KID_CLEAR_STARS,
@@ -95,7 +95,9 @@ export function KidAdventureBoard({
   const geometry = geometryOf(play.board);
   const stacks = geometry.size / geometry.boxCols;
   const sixOffer = play.lessonId && play.board.length === 4 ? sixEntry(learning) : null;
-  const soloLine = play.lessonId && play.completed ? kidSoloLine(play.hintsUsed) : null;
+  const soloLine =
+    play.lessonId && play.completed ? kidSoloLine(play.hintUnrated ? null : play.hintDepth, play.hintsUsed) : null;
+  const replayDemo = Boolean(play.lessonId && play.board.length === 6 && play.lessonId !== SIX_DEMO_ID);
   const conflicts = conflictCells(play.board);
   const nextLevelId = play.levelId < KID_LEVELS.length ? play.levelId + 1 : null;
   const focusKeys = new Set(play.focus.map((cell) => `${cell.row}-${cell.col}`));
@@ -235,8 +237,13 @@ export function KidAdventureBoard({
 
   useEffect(() => {
     if (!play.completed || !play.lessonId) return;
-    onLessonAttempt(play.lessonId, { hints: play.hintsUsed, mistakes: play.tried, done: true });
-  }, [play.completed, play.lessonId, play.hintsUsed, play.tried, onLessonAttempt]);
+    onLessonAttempt(play.lessonId, {
+      hints: play.hintsUsed,
+      mistakes: play.tried,
+      done: true,
+      ...(play.hintUnrated ? {} : { depth: play.hintDepth }),
+    });
+  }, [play.completed, play.lessonId, play.hintsUsed, play.tried, play.hintDepth, play.hintUnrated, onLessonAttempt]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -368,6 +375,11 @@ export function KidAdventureBoard({
           >
             再玩一次
           </button>
+          {replayDemo ? (
+            <button type="button" className="kid-again" onClick={() => startLesson(SIX_DEMO_ID)}>
+              再看示范
+            </button>
+          ) : null}
         </div>
       )}
 

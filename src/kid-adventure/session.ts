@@ -1,4 +1,5 @@
 import { KID_LEVELS } from './engine';
+import { HINT_NONE, isHintDepth, type HintDepth } from './learning';
 import { lessonById } from './lessons';
 import type { KidPlay } from './play';
 import { isKidGridComplete } from './rules';
@@ -18,6 +19,8 @@ export type KidSession = {
   selected: { row: number; col: number } | null;
   hintsUsed?: number;
   mistakes?: number;
+  hintDepth?: HintDepth;
+  hintUnrated?: boolean;
 };
 
 type ReadStorage = { getItem: (key: string) => string | null };
@@ -35,6 +38,15 @@ const isBoard = (value: unknown, size: number): value is number[][] =>
 
 const countOrZero = (value: unknown): number =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
+
+// 6×6 半盘仍是 v:2，4×4 仍是 v:1。层数是后加的可选字段。只有次数、没有层数时不能猜。
+const hintMark = (parsed: Partial<KidSession>): Pick<KidSession, 'hintDepth' | 'hintUnrated'> => {
+  const hintsUsed = countOrZero(parsed.hintsUsed);
+  if (parsed.hintUnrated === true || (!isHintDepth(parsed.hintDepth) && hintsUsed > 0)) {
+    return { hintDepth: HINT_NONE, hintUnrated: true };
+  }
+  return { hintDepth: isHintDepth(parsed.hintDepth) ? parsed.hintDepth : HINT_NONE, hintUnrated: false };
+};
 
 const isCell = (value: unknown, size: number): value is { row: number; col: number } | null => {
   if (value == null) return true;
@@ -80,6 +92,7 @@ export const parseKidSession = (raw: string | null): KidSession | null => {
         selected: selected ? { row: selected.row, col: selected.col } : null,
         hintsUsed: countOrZero(parsed.hintsUsed),
         mistakes: countOrZero(parsed.mistakes),
+        ...hintMark(parsed),
       };
     }
     if (typeof parsed.levelId !== 'number') return null;
@@ -103,6 +116,7 @@ export const parseKidSession = (raw: string | null): KidSession | null => {
       selected: selected ? { row: selected.row, col: selected.col } : null,
       hintsUsed: countOrZero(parsed.hintsUsed),
       mistakes: countOrZero(parsed.mistakes),
+      ...hintMark(parsed),
     };
   } catch {
     return null;
@@ -128,6 +142,8 @@ export const saveKidSession = (storage: WriteStorage, play: KidPlay) => {
     hintsUsed: play.hintsUsed,
     mistakes: play.tried,
   };
+  if (play.hintUnrated) session.hintUnrated = true;
+  else session.hintDepth = play.hintDepth;
   if (play.lessonId) session.lessonId = play.lessonId;
   storage.setItem(KID_SESSION_KEY, JSON.stringify(session));
 };
@@ -146,6 +162,8 @@ export const restoreKidPlay = (play: KidPlay, session: KidSession): KidPlay => (
   selected: session.selected,
   tried: session.mistakes ?? play.tried,
   hintsUsed: session.hintsUsed ?? play.hintsUsed,
+  hintDepth: session.hintUnrated ? HINT_NONE : (session.hintDepth ?? play.hintDepth),
+  hintUnrated: Boolean(session.hintUnrated),
   completed: isKidGridComplete(session.board),
   feedback: { tone: 'idle', text: '接着上次的格子。', value: null },
   focus: [],

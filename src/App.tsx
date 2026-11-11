@@ -10,7 +10,7 @@ import { SudokuBoard } from './components/SudokuBoard';
 import { TipBanner } from './components/TipBanner';
 import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
-import { continuation, lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
+import { childNextLine, lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
 import { GAME_ACTIONS } from './game/actions';
 import { ReplaceDialog, focusSameControl } from './components/ReplaceDialog';
@@ -193,11 +193,7 @@ export default function App() {
               <div className="card-body">
                 <h2 className="font-display text-3xl text-slate-900">家长</h2>
                 <div className="space-y-1 text-sm font-bold leading-6 text-slate-800">
-                  <p className="parent-next">
-                    {pathIsClear(state.kidLevelStars)
-                      ? `孩子下一步：${continuation(state.learning).label}。`
-                      : '孩子下一步：接着做小草地。'}
-                  </p>
+                  <p className="parent-next">{childNextLine(pathIsClear(state.kidLevelStars), state.learning)}</p>
                   <p>学习记录不记时间，也不按年龄。</p>
                   <p>原来的六关：{state.kidLevelStars.filter((stars) => stars > 0).length} 关有星星。</p>
                   {lessonParentLines(state.learning).map((line) => (
@@ -309,7 +305,8 @@ function Guide({ onClose }: { onClose: () => void }) {
             <p>小朋友先找少了的朋友、两个一样的朋友，再进入 4×4 小草地。</p>
             <p>每一行、每一列、每一小宫都要有 1、2、3、4。放重复了会指出那一组，可以撤销再试。</p>
             <p>六关之后，学一个朋友只剩一个座位。看一步先指出朋友和那一组，再说谁挡住了。</p>
-            <p>自己练没看提示做完，复习里的旧方法和新方法也各有一次没看提示做完，就可以看六个朋友。小宫是两行、三列。</p>
+            <p>4×4 的自己练和复习里，旧方法和新方法都有一次自己把座位放上，就可以看六个朋友。小宫是两行、三列。看一步只看那一组，还算自己放；听了原因或说出座位，就不算。</p>
+            <p>六个朋友做完可以再练。空位和座位都会再出现。想再看小宫，点「再看示范」。先不进 9×9。</p>
             <p>经典数独在「家长」里，仍是 9×9，错误达到上限会结束这一局。</p>
           </div>
           <div className="mt-3 flex justify-end">

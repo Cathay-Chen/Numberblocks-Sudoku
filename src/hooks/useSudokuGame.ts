@@ -526,7 +526,8 @@ export function useSudokuGame() {
         current &&
         current.done === activity.done &&
         current.hints === activity.hints &&
-        current.mistakes === activity.mistakes
+        current.mistakes === activity.mistakes &&
+        current.depth === activity.depth
       ) {
         return prev;
       }

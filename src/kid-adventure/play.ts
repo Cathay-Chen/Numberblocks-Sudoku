@@ -1,5 +1,6 @@
 import { coachLadder } from './coach';
 import { createKidLevelState } from './engine';
+import { depthAfterStage, HINT_NONE, type HintDepth } from './learning';
 import { lessonById } from './lessons';
 import {
   boxWithOneEmpty,
@@ -47,6 +48,9 @@ export type KidPlay = {
   future: number[][][];
   tried: number;
   hintsUsed: number;
+  // 这一题看一步到过的最深层。hintUnrated 表示刷新前的旧半盘只有次数，不能倒推成某一层。
+  hintDepth: HintDepth;
+  hintUnrated: boolean;
   lessonId: string | null;
   placeText: string;
   completed: boolean;
@@ -119,6 +123,8 @@ export const createKidPlay = (levelId: number): KidPlay => {
     future: [],
     tried: 0,
     hintsUsed: 0,
+    hintDepth: HINT_NONE,
+    hintUnrated: false,
     lessonId: null,
     placeText: PATH_PLACE_TEXT,
     completed: false,
@@ -143,6 +149,8 @@ export const createLessonPlay = (lessonId: string): KidPlay | null => {
     future: [],
     tried: 0,
     hintsUsed: 0,
+    hintDepth: HINT_NONE,
+    hintUnrated: false,
     placeText: LESSON_PLACE_TEXT,
     completed: false,
     feedback: idle('点一个空格，再点积木。'),
@@ -294,6 +302,9 @@ export const hintKidPlay = (play: KidPlay): KidPlay => {
   return {
     ...play,
     hintsUsed: play.hintsUsed + 1,
+    // 旧半盘不知道原来看到哪一层。后来再点一次，也不能把整题改写成「只看了那一组」。
+    hintDepth: play.hintUnrated ? play.hintDepth : depthAfterStage(play.hintDepth, step.stage),
+    hintUnrated: play.hintUnrated,
     coachKey: key,
     coachStep: index + 1 < ladder.length ? index + 1 : index,
     selected: step.focus ?? play.selected,
