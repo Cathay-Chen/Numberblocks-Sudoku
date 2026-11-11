@@ -1,6 +1,6 @@
 import { speakCoach } from '../audio/speak';
 
-type ToolName = 'hear' | 'mute' | 'undo' | 'redo' | 'erase' | 'friends' | 'demo' | 'check' | 'hint' | 'notes' | 'clear';
+type ToolName = 'hear' | 'mute' | 'undo' | 'redo' | 'erase' | 'friends' | 'demo' | 'check' | 'hint' | 'notes' | 'clear' | 'arrow' | 'close';
 
 const paths: Record<ToolName, string> = {
   hear: 'M4 10h4l5-4v12l-5-4H4v-4zm11 1a4 4 0 0 1 0 6M16 7a7 7 0 0 1 0 10',
@@ -14,6 +14,8 @@ const paths: Record<ToolName, string> = {
   hint: 'M12 4a5 5 0 0 0-2 9.6V16h4v-2.4A5 5 0 0 0 12 4zM10 19h4',
   notes: 'M7 4h8l4 4v12H7V4zM15 4v4h4M9 12h6M9 16h4',
   clear: 'M5 8h14M9 8V5h6v3M8 8l1 12h6l1-12',
+  arrow: 'M5 12h14M13 6l6 6-6 6',
+  close: 'M6 6l12 12M18 6 6 18',
 };
 
 export function ToolIcon({ name }: { name: ToolName }) {

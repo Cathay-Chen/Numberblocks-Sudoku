@@ -21,6 +21,7 @@ export const createFriendGame = (parent: HTMLElement, reducedMotion: boolean): P
       pixelArt: false,
       roundPixels: false,
       powerPreference: 'default',
+      preserveDrawingBuffer: true,
     },
     scale: {
       mode: Phaser.Scale.RESIZE,

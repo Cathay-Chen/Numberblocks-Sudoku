@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { kidSoloLine, readLearning, recordAttempt } from '../src/kid-adventure/learning';
-import { continuation, lessonParentLines, nextLessonStep, pathIsClear } from '../src/kid-adventure/lessons';
+import { HINT_FRIEND, HINT_LOOK, HINT_WHY, isIndependent, kidSoloLine, readLearning, recordAttempt } from '../src/kid-adventure/learning';
+import { childNextLine, continuation, lessonParentLines, nextLessonStep, pathIsClear } from '../src/kid-adventure/lessons';
 import { chooseOpening } from '../src/kid-adventure/opening';
 import {
   KID_PROGRESS_BACKUP_KEY,
@@ -77,12 +77,35 @@ describe('learning record', () => {
     expect(storage.getItem(KID_PROGRESS_KEY)).toBe('{stars');
   });
 
-  it('tells the child only when this attempt used no hints', () => {
-    expect(kidSoloLine(0)).toBe('你自己找齐了。');
-    expect(kidSoloLine(1)).toBeNull();
-    const lines = lessonParentLines(recordAttempt(null, 'seat-practice', { hints: 3, mistakes: 2, done: true }));
-    expect(lines.some((line) => line.includes('自己练') && line.includes('看一步 3') && line.includes('放重 2'))).toBe(true);
+  it('keeps a star file that only counted hints, and reads a later depth', () => {
+    const legacy = recordAttempt(null, 'seat-practice', { hints: 3, mistakes: 2, done: true });
+    expect(legacy.v).toBe(1);
+    expect(legacy.activities['seat-practice'].depth).toBeUndefined();
+    expect(isIndependent(legacy.activities['seat-practice'])).toBe(false);
+    const lines = lessonParentLines(legacy);
+    expect(lines.some((line) => line.includes('自己练') && line.includes('没记下看到第几层') && line.includes('放重 2'))).toBe(true);
     expect(lines.some((line) => line.includes('新方法示范：还没做完'))).toBe(true);
+
+    const looked = recordAttempt(legacy, 'seat-practice', { hints: 1, mistakes: 2, done: true, depth: HINT_LOOK });
+    expect(isIndependent(looked.activities['seat-practice'])).toBe(true);
+    expect(lessonParentLines(looked).some((line) => line.includes('只看了那一组') && line.includes('自己做完'))).toBe(true);
+    const told = recordAttempt(looked, 'seat-practice', { hints: 3, mistakes: 2, done: true, depth: HINT_FRIEND });
+    expect(isIndependent(told.activities['seat-practice'])).toBe(false);
+    expect(lessonParentLines(told).some((line) => line.includes('提示说出了座位') && line.includes('做完了'))).toBe(true);
+    const heard = recordAttempt(told, 'review-seat', { hints: 2, mistakes: 0, done: true, depth: HINT_WHY });
+    expect(lessonParentLines(heard).some((line) => line.includes('复习：座位') && line.includes('听了原因'))).toBe(true);
+
+    const noisy = readLearning({
+      v: 1,
+      activities: { 'seat-demo': { hints: 1, mistakes: 0, done: true, depth: 7 } },
+    });
+    expect(noisy?.activities['seat-demo']).toEqual({ hints: 1, mistakes: 0, done: true });
+    expect(kidSoloLine(0)).toBe('你自己找齐了。');
+    expect(kidSoloLine(HINT_LOOK)).toBe('座位是你自己放的。');
+    expect(kidSoloLine(HINT_WHY)).toBeNull();
+    expect(kidSoloLine(HINT_FRIEND)).toBeNull();
+    expect(kidSoloLine(null, 0)).toBe('你自己找齐了。');
+    expect(kidSoloLine(null, 2)).toBeNull();
   });
 
   it('opens the new method only after the six path levels have stars', () => {
@@ -103,5 +126,7 @@ describe('learning record', () => {
     expect(nextLessonStep('seat-practice').id).toBe('review-row');
     expect(nextLessonStep('review-mix').id).toBe('review-row');
     expect(readLearning({ v: 2 })).toBeUndefined();
+    expect(childNextLine(false, null)).toBe('孩子下一步：接着做小草地。');
+    expect(childNextLine(true, null)).toBe('孩子下一步：学新方法。');
   });
 });

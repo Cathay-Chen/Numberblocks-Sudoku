@@ -47,8 +47,9 @@ export const buildGridModel = (play: {
           given: Boolean(play.givens[rowIndex]?.[col]),
           selected,
           hint: play.feedback.tone === 'hint' && has(band, cell),
-          conflict:
-            duplicates.has(`${rowIndex}-${col}`) || (play.feedback.tone === 'conflict' && has(band, cell)),
+          // 红框只留给真正重复的格子。整行只用淡色，不把空格也画成错。
+          conflict: play.feedback.tone === 'conflict' && duplicates.has(`${rowIndex}-${col}`),
+          band: play.feedback.tone === 'conflict' && has(band, cell),
           placed: play.feedback.tone === 'placed' && selected,
         };
       })
@@ -78,7 +79,8 @@ export const buildWarmupModel = (play: {
     given: false,
     selected: false,
     hint: play.feedback.tone !== 'conflict' && play.highlight.includes(col),
-    conflict: play.feedback.tone === 'conflict' && play.highlight.includes(col),
+    conflict: play.feedback.tone === 'conflict' && play.highlight.includes(col) && value !== 0,
+    band: play.feedback.tone === 'conflict' && play.highlight.includes(col),
     placed: (play.feedback.tone === 'found' || play.feedback.tone === 'done') && play.highlight.includes(col) && value !== 0,
   })),
 });

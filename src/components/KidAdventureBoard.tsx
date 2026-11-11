@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { cheers } from '../audio/celebration';
 import { buildGridModel } from '../stage/model';
+import { explainBand } from '../stage/spots';
 import { Playfield } from '../stage/Playfield';
 import { showFriend, type ShowFriendInput } from '../stage/present';
 import { useStageCue } from '../stage/useStageCue';
@@ -9,7 +10,7 @@ import { ReplaceDialog, focusSameControl } from './ReplaceDialog';
 import { HandButton, HearButton, QuietLink, ToolIcon } from './ToolIcon';
 import { KID_LEVELS, computeUnlockedLevels, selectResumeLevel } from '../kid-adventure/engine';
 import { kidSoloLine, type LearningActivity, type LearningRecord } from '../kid-adventure/learning';
-import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, sixEntry } from '../kid-adventure/lessons';
+import { continuation, demoIdFor, lessonById, nextLessonStep, pathIsClear, SIX_DEMO_ID, sixEntry, sixTrack } from '../kid-adventure/lessons';
 import { chooseOpening } from '../kid-adventure/opening';
 import {
   KID_CLEAR_STARS,
@@ -95,10 +96,31 @@ export function KidAdventureBoard({
   const geometry = geometryOf(play.board);
   const stacks = geometry.size / geometry.boxCols;
   const sixOffer = play.lessonId && play.board.length === 4 ? sixEntry(learning) : null;
-  const soloLine = play.lessonId && play.completed ? kidSoloLine(play.hintsUsed) : null;
+  const soloLine =
+    play.lessonId && play.completed ? kidSoloLine(play.hintUnrated ? null : play.hintDepth, play.hintsUsed) : null;
+  const replayDemo = Boolean(play.lessonId && play.board.length === 6 && play.lessonId !== SIX_DEMO_ID);
   const conflicts = conflictCells(play.board);
   const nextLevelId = play.levelId < KID_LEVELS.length ? play.levelId + 1 : null;
   const focusKeys = new Set(play.focus.map((cell) => `${cell.row}-${cell.col}`));
+  const lineKeys = new Set(
+    (play.feedback.tone === 'conflict' ? explainBand(play.board, play.focus) : []).map(
+      (cell) => `${cell.row}-${cell.col}`
+    )
+  );
+  const line = play.feedback.tone === 'idle' ? task : play.feedback.text;
+  const celebrate = soloLine ?? clearedText(geometry.size);
+  const onSix = play.board.length === 6 && Boolean(play.lessonId);
+  const track = sixTrack();
+  const stepDone = (id: string) => Boolean(learning?.activities[id]?.done);
+  const primaryNext = sixOffer
+    ? () => startLesson(sixOffer.id)
+    : lessonNext
+      ? () => startLesson(lessonNext.id)
+      : nextLevelId
+        ? () => startLevel(nextLevelId, true)
+        : forward
+          ? () => startLesson(forward.id)
+          : null;
 
   const commit = (next: KidPlay) => {
     playRef.current = next;
@@ -235,8 +257,13 @@ export function KidAdventureBoard({
 
   useEffect(() => {
     if (!play.completed || !play.lessonId) return;
-    onLessonAttempt(play.lessonId, { hints: play.hintsUsed, mistakes: play.tried, done: true });
-  }, [play.completed, play.lessonId, play.hintsUsed, play.tried, onLessonAttempt]);
+    onLessonAttempt(play.lessonId, {
+      hints: play.hintsUsed,
+      mistakes: play.tried,
+      done: true,
+      ...(play.hintUnrated ? {} : { depth: play.hintDepth }),
+    });
+  }, [play.completed, play.lessonId, play.hintsUsed, play.tried, play.hintDepth, play.hintUnrated, onLessonAttempt]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -255,7 +282,7 @@ export function KidAdventureBoard({
 
   return (
     <section className="kid-card">
-      <h2 className="kid-task">{task}</h2>
+      <h2 className="sr-only">{task}</h2>
       <Playfield
         model={model}
         onMode={setField}
@@ -280,7 +307,7 @@ export function KidAdventureBoard({
                 const value = play.board[row][col];
                 const key = `${row}-${col}`;
                 const selected = play.selected?.row === row && play.selected?.col === col;
-                const wrong = conflicts.has(key) || (pulse?.kind === 'miss' && pulse.key === key);
+                const wrong = play.feedback.tone === 'conflict' && conflicts.has(key);
                 return (
                   <button
                     key={key}
@@ -290,6 +317,7 @@ export function KidAdventureBoard({
                       selected ? 'kid-cell-selected' : '',
                       play.givens[row][col] ? 'kid-cell-given' : '',
                       wrong ? 'kid-cell-wrong' : '',
+                      lineKeys.has(key) && !wrong ? 'kid-cell-line' : '',
                       pulse?.kind === 'miss' && (pulse.key === key || focusKeys.has(key)) ? 'kid-cell-bump' : '',
                       pulse?.kind === 'place' && pulse.key === key ? 'kid-cell-ack' : '',
                       guideEmpties && value === 0 ? 'kid-cell-need' : '',
@@ -317,57 +345,50 @@ export function KidAdventureBoard({
               <NumberBlock value={play.feedback.value} size="picker" imageAlt="" />
             </div>
           ) : null}
-          <p>{play.feedback.text}</p>
-          <HearButton text={play.feedback.text} />
+          <p>{line}</p>
+          <HearButton text={line} />
         </div>
       )}
 
       {play.completed && (
-        <div className="grid gap-3 text-center">
-          <div hidden={field !== 'fallback'} className={geometry.size === 6 ? 'cheer-friends cheer-friends-six' : 'cheer-friends'} aria-hidden="true">
-            {geometry.digits.map((value) => (
-              <div key={value} className="cheer-friend" data-cheer={value}>
-                <NumberBlock value={value} size="picker" imageAlt="" showScreenReaderLabel={false} />
-              </div>
-            ))}
+        <div className="kid-done">
+          <div className="kid-celebrate" data-cheer="1">
+            <div className="kid-celebrate-face" aria-hidden="true">
+              <NumberBlock value={geometry.digits[0] ?? 1} size="picker" imageAlt="" showScreenReaderLabel={false} />
+            </div>
+            <div className="kid-celebrate-text">
+              <p className="kid-celebrate-copy">{celebrate}</p>
+              {soloLine ? <p className="kid-celebrate-sub">{clearedText(geometry.size)}</p> : null}
+            </div>
+            <HearButton text={celebrate} />
           </div>
-          <div className="kid-clear-line">
-            <p className="text-lg font-black text-emerald-950" data-clear-copy>
-              {clearedText(geometry.size)}
-            </p>
-            <HearButton text={clearedText(geometry.size)} />
-          </div>
-          {soloLine ? <p className="text-sm font-bold text-emerald-800">{soloLine}</p> : null}
-          {sixOffer ? (
-            <button type="button" className="kid-go" onClick={() => startLesson(sixOffer.id)}>
-              {sixOffer.label}
+          {!play.lessonId && !nextLevelId ? <p className="text-center text-sm font-bold text-emerald-800">六关都齐了。</p> : null}
+          {primaryNext ? (
+            <button type="button" className="kid-go" onClick={primaryNext}>
+              <span>下一题</span>
+              <ToolIcon name="arrow" />
             </button>
           ) : null}
-          {lessonNext ? (
-            <button type="button" className={sixOffer ? 'kid-again' : 'kid-go'} onClick={() => startLesson(lessonNext.id)}>
-              {lessonNext.label}
+          <div className="kid-done-tools">
+            <button
+              type="button"
+              className="kid-mini"
+              aria-label="再玩一次"
+              onClick={() => (play.lessonId ? startLesson(play.lessonId) : startLevel(play.levelId, true))}
+            >
+              <ToolIcon name="redo" />
+              <span>再玩一次</span>
             </button>
-          ) : nextLevelId ? (
-            <button type="button" className="kid-go" onClick={() => startLevel(nextLevelId, true)}>
-              下一关
-            </button>
-          ) : forward ? (
-            <>
-              <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
-              <button type="button" className="kid-go" onClick={() => startLesson(forward.id)}>
-                {forward.label}
+            {replayDemo ? (
+              <button type="button" className="kid-mini" aria-label="再看示范" onClick={() => startLesson(SIX_DEMO_ID)}>
+                <ToolIcon name="demo" />
+                <span>再看示范</span>
               </button>
-            </>
-          ) : (
-            <p className="text-sm font-bold text-emerald-800">六关都齐了。</p>
-          )}
-          <button
-            type="button"
-            className="kid-again"
-            onClick={() => (play.lessonId ? startLesson(play.lessonId) : startLevel(play.levelId, true))}
-          >
-            再玩一次
-          </button>
+            ) : null}
+          </div>
+          {sixOffer && lessonNext ? (
+            <QuietLink label={lessonNext.label} onClick={() => startLesson(lessonNext.id)} />
+          ) : null}
         </div>
       )}
 
@@ -407,6 +428,7 @@ export function KidAdventureBoard({
         </button>
       )}
 
+      {!play.completed && (
       <div className="kid-hand" role="group" aria-label="刚才的格子">
         <HandButton
           icon="undo"
@@ -441,6 +463,7 @@ export function KidAdventureBoard({
           }}
         />
       </div>
+      )}
 
       {!play.completed && !play.lessonId && forward ? (
         <QuietLink label={forward.label} onClick={() => requestReplace(() => startLesson(forward.id))} />
@@ -467,6 +490,44 @@ export function KidAdventureBoard({
         </div>
       )}
 
+      {onSix ? (
+        <div className="kid-progress" aria-label="六个朋友的进度">
+          {(['teach', 'review'] as const).map((group) => (
+            <div key={group} className="kid-progress-group" data-group={group} aria-label={group === 'teach' ? '学小宫' : '再练'}>
+              <span className="kid-progress-name">
+                <ToolIcon name={group === 'teach' ? 'demo' : 'redo'} />
+                {group === 'teach' ? '学' : '练'}
+              </span>
+              <div className="kid-progress-dots">
+              {track
+                .map((step, index) => ({ step, index }))
+                .filter(({ step }) => step.group === group)
+                .map(({ step, index }, place) => {
+                  const current = play.lessonId === step.id;
+                  const done = stepDone(step.id);
+                  const open = current || done || track.slice(0, index).every((item) => stepDone(item.id));
+                  const lesson = lessonById(step.id);
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      className="kid-level"
+                      disabled={!open}
+                      data-done={done ? '1' : undefined}
+                      aria-current={current ? 'step' : undefined}
+                      aria-label={`${lesson?.parentLabel ?? step.id}${done ? ' 做完了' : open ? ' 可以玩' : ' 还没打开'}${current ? ' 现在' : ''}`}
+                      onClick={() => requestReplace(() => startLesson(step.id))}
+                    >
+                      <span>{place + 1}</span>
+                      {done ? <ToolIcon name="check" /> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
       <div className="kid-levels" aria-label="进度">
         {KID_LEVELS.map((level) => {
           const locked = level.id > unlockedLevels;
@@ -489,6 +550,7 @@ export function KidAdventureBoard({
           );
         })}
       </div>
+      )}
       {pendingReplace ? <ReplaceDialog onKeep={keepBoard} onReplace={replaceBoard} /> : null}
     </section>
   );

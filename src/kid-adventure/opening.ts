@@ -16,7 +16,13 @@ const boardMoved = (saved: KidSession, puzzle: number[][]): boolean =>
 const lessonShouldRestore = (saved: KidSession, puzzle: number[][]): boolean => {
   const expectedVersion = puzzle.length === 6 ? 2 : 1;
   if (saved.v !== expectedVersion) return false;
-  return boardMoved(saved, puzzle) || (saved.hintsUsed ?? 0) > 0 || (saved.mistakes ?? 0) > 0;
+  return (
+    boardMoved(saved, puzzle) ||
+    (saved.hintsUsed ?? 0) > 0 ||
+    (saved.hintDepth ?? 0) > 0 ||
+    saved.hintUnrated === true ||
+    (saved.mistakes ?? 0) > 0
+  );
 };
 
 export const chooseOpening = (input: {
