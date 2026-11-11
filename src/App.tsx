@@ -48,6 +48,7 @@ export default function App() {
   const [replayWarmup, setReplayWarmup] = useState(false);
   const [greetBoard, setGreetBoard] = useState(false);
   const [parentOpen, setParentOpen] = useState(false);
+  const parentCloseRef = useRef<HTMLButtonElement>(null);
   const [guideOpen, setGuideOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [audioSettings, setAudioSettings] = useState<AudioSettings>({
@@ -84,6 +85,19 @@ export default function App() {
       window.localStorage.setItem('numberblocks-audio-settings', JSON.stringify(audioSettings));
     }
   }, [audioSettings]);
+
+  useEffect(() => {
+    if (!parentOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setParentOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    const frame = window.requestAnimationFrame(() => parentCloseRef.current?.focus());
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [parentOpen]);
 
   useEffect(() => {
     const onClick = (event: MouseEvent) => {
@@ -188,10 +202,26 @@ export default function App() {
           )}
         </main>
         {parentOpen && (
-          <div className="fixed inset-0 z-50 grid place-items-end bg-slate-950/40 p-4 sm:place-items-center">
-            <div className="card max-h-[90vh] w-full max-w-sm overflow-y-auto border border-slate-200 bg-white shadow-2xl">
-              <div className="card-body">
-                <h2 className="font-display text-3xl text-slate-900">家长</h2>
+          <div className="parent-shade">
+            <div
+              className="parent-sheet"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="parent-title"
+            >
+              <div className="parent-sheet-head">
+                <h2 id="parent-title">家长</h2>
+                <button
+                  ref={parentCloseRef}
+                  type="button"
+                  className="parent-close"
+                  aria-label="关闭"
+                  onClick={() => setParentOpen(false)}
+                >
+                  <ToolIcon name="close" />
+                </button>
+              </div>
+              <div className="parent-sheet-body">
                 <div className="space-y-1 text-sm font-bold leading-6 text-slate-800">
                   <p className="parent-next">{childNextLine(pathIsClear(state.kidLevelStars), state.learning)}</p>
                   <p>学习记录不记时间，也不按年龄。</p>
@@ -212,9 +242,6 @@ export default function App() {
                 </button>
                 <button type="button" className="parent-row" onClick={() => { setParentOpen(false); setSettingsOpen(true); }}>
                   声音
-                </button>
-                <button type="button" className="parent-dismiss" onClick={() => setParentOpen(false)}>
-                  关闭
                 </button>
               </div>
             </div>

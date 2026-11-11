@@ -28,6 +28,11 @@ export const SIX_PRACTICE_ID = 'six-practice';
 export const SIX_AGAIN_ID = 'six-again';
 export const SIX_REVIEW_IDS = ['six-review-old', 'six-review-seat', 'six-review-mix'] as const;
 const SIX_TEACHING = [SIX_DEMO_ID, SIX_LINE_ID, SIX_PRACTICE_ID, SIX_AGAIN_ID] as const;
+
+export const sixTrack = (): { id: string; group: 'teach' | 'review' }[] => [
+  ...SIX_TEACHING.map((id) => ({ id, group: 'teach' as const })),
+  ...SIX_REVIEW_IDS.map((id) => ({ id, group: 'review' as const })),
+];
 const OLD_SIX = [SIX_DEMO_ID, SIX_LINE_ID, SIX_REVIEW_IDS[0]] as const;
 const NEW_SIX = [SIX_PRACTICE_ID, SIX_AGAIN_ID, SIX_REVIEW_IDS[1], SIX_REVIEW_IDS[2]] as const;
 const OLD_METHOD_REVIEWS = ['review-row', 'review-col'] as const;

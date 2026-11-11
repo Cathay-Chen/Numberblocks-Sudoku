@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { layoutPlayfield } from './layout';
+import { layoutPlayfield, viewportBudget } from './layout';
 import { presentPlayfield, subscribePlayAction, subscribeSeats, type PlayfieldModel } from './playfield';
 import { StageHost } from './StageHost';
 
@@ -26,13 +26,20 @@ export function Playfield({ model, onCell, onPlace, onMode }: PlayfieldProps) {
     const apply = () => {
       const width = el.clientWidth;
       if (width < 64) return;
-      const next = layoutPlayfield(width, model).height;
+      const top = el.getBoundingClientRect().top;
+      const next = layoutPlayfield(width, model, {
+        maxHeight: viewportBudget(top, window.innerHeight),
+      }).height;
       setHeight((prev) => (prev === next ? prev : next));
     };
     apply();
     const observer = new ResizeObserver(apply);
     observer.observe(el);
-    return () => observer.disconnect();
+    window.addEventListener('resize', apply);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', apply);
+    };
   }, [model.kind, model.size, model.boxRows, model.boxCols, model.digits]);
 
   useEffect(() => {

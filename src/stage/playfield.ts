@@ -6,6 +6,7 @@ export type PlayCell = {
   selected: boolean;
   hint: boolean;
   conflict: boolean;
+  band: boolean;
   placed: boolean;
 };
 

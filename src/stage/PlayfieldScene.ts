@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { layoutPlayfield, type SeatBox, type TrayBox } from './layout';
+import { layoutPlayfield, viewportBudget, type SeatBox, type TrayBox } from './layout';
 import {
   emitPlayAction,
   lastPlayfield,
@@ -168,7 +168,15 @@ export class PlayfieldScene extends Phaser.Scene {
     if (this.syncScale()) return;
     if (this.reduced()) this.tweens.killAll();
     this.wake();
-    const layout = layoutPlayfield(this.scale.width, model);
+    const host = this.host();
+    const top = host ? host.getBoundingClientRect().top : 0;
+    const layout = layoutPlayfield(this.scale.width, model, {
+      maxHeight: viewportBudget(top, window.innerHeight),
+    });
+    if (host && Math.abs(host.clientHeight - layout.height) > 2) {
+      host.style.height = `${layout.height}px`;
+      return;
+    }
     this.seatBoxes = layout.seats;
     this.trayBoxes = layout.tray;
     this.frames.clear();
@@ -183,7 +191,6 @@ export class PlayfieldScene extends Phaser.Scene {
       ...layout.seats.map((seat) => ({ key: `${seat.row}-${seat.col}`, x: seat.x, y: seat.y, w: seat.w, h: seat.h })),
       ...layout.tray.map((item) => ({ key: `n-${item.value}`, x: item.x, y: item.y, w: item.w, h: item.h })),
     ]);
-    const host = this.host();
     if (host) {
       const cue = model.closed
         ? 'board'
@@ -223,22 +230,22 @@ export class PlayfieldScene extends Phaser.Scene {
       const right = Math.max(...group.map((seat) => seat.x + seat.w)) + 4;
       const bottom = Math.max(...group.map((seat) => seat.y + seat.h)) + 4;
       const cells = group.map((seat) => this.cellAt(model, seat));
-      const conflict = cells.length > 0 && cells.every((cell) => cell?.conflict);
-      const hint = !conflict && cells.length > 0 && cells.every((cell) => cell?.hint);
+      const hint = cells.length > 0 && cells.every((cell) => cell?.hint);
       graphics.fillStyle(model.kind === 'grid' && (Math.floor(group[0].row / model.boxRows) + Math.floor(group[0].col / model.boxCols)) % 2 === 1 ? 0xfff6e8 : 0xf8fafc, 1);
       graphics.fillRoundedRect(left, top, right - left, bottom - top, 12);
       if (model.kind === 'grid') graphics.strokeRoundedRect(left, top, right - left, bottom - top, 12);
-      if (hint || conflict) {
-        this.marks?.lineStyle(6, conflict ? 0xe11d48 : 0xf59e0b, 1);
+      if (hint) {
+        this.marks?.lineStyle(6, 0xf59e0b, 1);
         this.marks?.strokeRoundedRect(left - 2, top - 2, right - left + 4, bottom - top + 4, 14);
       }
     }
     for (const seat of seats) {
       const cell = this.cellAt(model, seat);
       const selected = cell?.selected;
-      graphics.fillStyle(cell?.conflict ? 0xffe4e6 : cell?.hint ? 0xfde68a : cell && cell.value !== 0 ? 0xffffff : 0xfffef8, 1);
+      graphics.fillStyle(cell?.conflict ? 0xffe4e6 : cell?.hint ? 0xfde68a : cell?.band ? 0xe8edf2 : cell && cell.value !== 0 ? 0xffffff : 0xfffef8, 1);
       graphics.fillRoundedRect(seat.x, seat.y, seat.w, seat.h, 10);
-      graphics.lineStyle(selected ? 4 : cell?.conflict ? 4 : cell?.hint ? 4 : 2, selected ? 0x0369a1 : cell?.conflict ? 0xe11d48 : cell?.hint ? 0xf59e0b : 0xcbd5e1, 1);
+      const line = selected ? 0x0369a1 : cell?.conflict ? 0xe11d48 : cell?.hint ? 0xf59e0b : cell?.band ? 0x94a3b8 : 0xcbd5e1;
+      graphics.lineStyle(selected || cell?.conflict || cell?.hint ? 4 : 2, line, 1);
       graphics.strokeRoundedRect(seat.x, seat.y, seat.w, seat.h, 10);
     }
   }

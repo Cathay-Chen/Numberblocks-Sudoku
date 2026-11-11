@@ -20,6 +20,7 @@ export type PlayLayout = {
   tray: TrayBox[];
   trayTop: number;
   height: number;
+  beside: boolean;
 };
 
 export type LayoutSpec = {
@@ -30,11 +31,18 @@ export type LayoutSpec = {
   digits: number[];
 };
 
+export type LayoutOptions = {
+  // 舞台从视口顶往下还能用的高度。托盘必须整块落在这里面，不能被裁掉。
+  maxHeight?: number;
+};
+
 const LABEL_H = 22;
+const TAP = 44;
+const PAD = 8;
 
 const placeRow = (boxes: { w: number; h: number }[], width: number, y: number, gap: number) => {
   const total = boxes.reduce((sum, box) => sum + box.w, 0) + gap * (boxes.length - 1);
-  let x = Math.max(8, (width - total) / 2);
+  let x = Math.max(PAD, (width - total) / 2);
   return boxes.map((box) => {
     const at = { x, y, w: box.w, h: box.h };
     x += box.w + gap;
@@ -42,82 +50,218 @@ const placeRow = (boxes: { w: number; h: number }[], width: number, y: number, g
   });
 };
 
-// 从顶上往下排。高度只包住棋盘和带数字的托盘，不在中间留空带。
-export const layoutPlayfield = (width: number, spec: LayoutSpec): PlayLayout => {
-  const digits = spec.digits.length > 0 ? spec.digits : [1, 2, 3, 4];
-  const trayCols = digits.length > 4 ? 3 : digits.length;
-  const trayRows = Math.ceil(digits.length / trayCols);
-  const trayGap = 8;
-  const face = Math.max(48, Math.min(68, Math.floor((width - 24 - trayGap * (trayCols - 1)) / trayCols)));
-  const itemW = face;
-  const itemH = face + LABEL_H;
-  const boardTop = 6;
-  const seats: SeatBox[] = [];
-  let boardBottom = boardTop;
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-  if (spec.kind === 'warmup-row') {
-    const count = Math.max(1, spec.size);
-    const gap = 8;
-    const size = Math.max(48, Math.min(84, Math.floor((width - 24 - gap * (count - 1)) / count)));
-    const row = placeRow(Array.from({ length: count }, () => ({ w: size, h: size })), width, boardTop, gap);
-    row.forEach((box, col) => seats.push({ row: 0, col, ...box }));
-    boardBottom = boardTop + size;
-  } else if (spec.kind === 'warmup-box') {
-    const gap = 8;
-    const size = Math.max(48, Math.min(84, Math.floor((Math.min(width - 48, width * 0.7) - gap) / 2)));
-    const originX = (width - (size * 2 + gap)) / 2;
-    for (let index = 0; index < 4; index += 1) {
-      const col = index % 2;
-      const row = Math.floor(index / 2);
+// 六个朋友在够宽时排成一行。放不下 44px 的点击区就回到两行三列。
+const trayColumns = (width: number, count: number, beside: boolean) => {
+  if (beside) return count > 4 ? 2 : count > 1 ? 2 : 1;
+  if (count <= 4) return count;
+  const inner = width - PAD * 2;
+  for (const gap of [8, 6, 4]) {
+    if (count * TAP + gap * (count - 1) <= inner) return count;
+  }
+  return 3;
+};
+
+const trayGapFor = (width: number, count: number, cols: number) => {
+  if (cols !== count || count <= 1) return 8;
+  const inner = width - PAD * 2;
+  const leftover = inner - count * TAP;
+  const gap = Math.floor(leftover / (count - 1));
+  return clamp(gap, 4, 8);
+};
+
+type TrayMetrics = {
+  cols: number;
+  rows: number;
+  gap: number;
+  itemW: number;
+  itemH: number;
+  blockW: number;
+  blockH: number;
+};
+
+const trayMetrics = (count: number, cols: number, gap: number, face: number): TrayMetrics => {
+  const rows = Math.max(1, Math.ceil(count / cols));
+  const itemW = Math.max(1, face);
+  const itemH = Math.max(TAP, face + LABEL_H);
+  return {
+    cols,
+    rows,
+    gap,
+    itemW,
+    itemH,
+    blockW: cols * itemW + gap * (cols - 1),
+    blockH: rows * itemH + gap * (rows - 1),
+  };
+};
+
+const faceFor = (span: number, cols: number, gap: number) => {
+  const raw = Math.floor((span - gap * Math.max(0, cols - 1)) / Math.max(1, cols));
+  return clamp(raw, TAP, 72);
+};
+
+const seatsForGrid = (
+  spec: LayoutSpec,
+  originX: number,
+  boardWidth: number,
+  boardTop: number,
+  cell: number
+): { seats: SeatBox[]; boardHeight: number } => {
+  const stacks = Math.max(1, spec.size / spec.boxCols);
+  const bands = Math.max(1, spec.size / spec.boxRows);
+  const boxGap = 6;
+  const inner = 3;
+  const frame = 4;
+  const boxW = frame * 2 + spec.boxCols * cell + inner * (spec.boxCols - 1);
+  const boxH = frame * 2 + spec.boxRows * cell + inner * (spec.boxRows - 1);
+  const gridW = stacks * boxW + boxGap * (stacks - 1);
+  const x0 = originX + Math.max(0, (boardWidth - gridW) / 2);
+  const seats: SeatBox[] = [];
+  for (let row = 0; row < spec.size; row += 1) {
+    for (let col = 0; col < spec.size; col += 1) {
+      const boxCol = Math.floor(col / spec.boxCols);
+      const boxRow = Math.floor(row / spec.boxRows);
       seats.push({
-        row: 0,
-        col: index,
-        x: originX + col * (size + gap),
-        y: boardTop + row * (size + gap),
-        w: size,
-        h: size,
+        row,
+        col,
+        x: x0 + boxCol * (boxW + boxGap) + frame + (col % spec.boxCols) * (cell + inner),
+        y: boardTop + boxRow * (boxH + boxGap) + frame + (row % spec.boxRows) * (cell + inner),
+        w: cell,
+        h: cell,
       });
     }
-    boardBottom = boardTop + size * 2 + gap;
-  } else {
-    const stacks = Math.max(1, spec.size / spec.boxCols);
-    const bands = Math.max(1, spec.size / spec.boxRows);
-    const boxGap = 6;
-    const inner = 3;
-    const frame = 4;
-    const slot = (width - 16 - boxGap * (stacks - 1)) / stacks;
-    const cell = Math.max(18, Math.floor((slot - frame * 2 - inner * (spec.boxCols - 1)) / spec.boxCols));
-    const boxW = frame * 2 + spec.boxCols * cell + inner * (spec.boxCols - 1);
-    const boxH = frame * 2 + spec.boxRows * cell + inner * (spec.boxRows - 1);
-    const gridW = stacks * boxW + boxGap * (stacks - 1);
-    const originX = (width - gridW) / 2;
-    for (let row = 0; row < spec.size; row += 1) {
-      for (let col = 0; col < spec.size; col += 1) {
-        const boxCol = Math.floor(col / spec.boxCols);
-        const boxRow = Math.floor(row / spec.boxRows);
-        seats.push({
-          row,
-          col,
-          x: originX + boxCol * (boxW + boxGap) + frame + (col % spec.boxCols) * (cell + inner),
-          y: boardTop + boxRow * (boxH + boxGap) + frame + (row % spec.boxRows) * (cell + inner),
-          w: cell,
-          h: cell,
-        });
-      }
-    }
-    boardBottom = boardTop + bands * boxH + boxGap * (bands - 1);
   }
+  return { seats, boardHeight: bands * boxH + boxGap * (bands - 1) };
+};
 
-  const trayTop = boardBottom + 8;
+const preferredCell = (boardWidth: number, spec: LayoutSpec) => {
+  const stacks = Math.max(1, spec.size / spec.boxCols);
+  const boxGap = 6;
+  const inner = 3;
+  const frame = 4;
+  const slot = (boardWidth - boxGap * (stacks - 1)) / stacks;
+  return Math.max(16, Math.floor((slot - frame * 2 - inner * (spec.boxCols - 1)) / spec.boxCols));
+};
+
+const placeTray = (digits: number[], metrics: TrayMetrics, originX: number, originY: number): TrayBox[] => {
   const tray: TrayBox[] = [];
   digits.forEach((value, index) => {
-    const col = index % trayCols;
-    const row = Math.floor(index / trayCols);
-    const rowCount = Math.min(trayCols, digits.length - row * trayCols);
-    const rowW = rowCount * itemW + trayGap * (rowCount - 1);
-    const x = (width - rowW) / 2 + col * (itemW + trayGap);
-    tray.push({ value, x, y: trayTop + row * (itemH + trayGap), w: itemW, h: itemH });
+    const col = index % metrics.cols;
+    const row = Math.floor(index / metrics.cols);
+    const rowCount = Math.min(metrics.cols, digits.length - row * metrics.cols);
+    const rowW = rowCount * metrics.itemW + metrics.gap * (rowCount - 1);
+    const x = originX + (metrics.blockW - rowW) / 2 + col * (metrics.itemW + metrics.gap);
+    tray.push({
+      value,
+      x,
+      y: originY + row * (metrics.itemH + metrics.gap),
+      w: metrics.itemW,
+      h: metrics.itemH,
+    });
   });
-  const height = Math.ceil(trayTop + trayRows * itemH + trayGap * (trayRows - 1) + 8);
-  return { seats, tray, trayTop, height };
+  return tray;
+};
+
+const wantsBeside = (width: number, spec: LayoutSpec, maxHeight?: number) => {
+  if (spec.kind !== 'grid' || spec.digits.length < 4) return false;
+  if (width >= 560) return true;
+  return maxHeight != null && maxHeight < 430 && width >= 400 && spec.digits.length > 4;
+};
+
+// 从顶上往下排。高度只包住棋盘和托盘。宽屏把托盘放到棋盘旁边，窄屏在装得下时改成一行。
+export const layoutPlayfield = (width: number, spec: LayoutSpec, options: LayoutOptions = {}): PlayLayout => {
+  const digits = spec.digits.length > 0 ? spec.digits : [1, 2, 3, 4];
+  const boardTop = 6;
+  const beside = wantsBeside(width, spec, options.maxHeight);
+
+  if (spec.kind !== 'grid') {
+    const seats: SeatBox[] = [];
+    let boardBottom = boardTop;
+    if (spec.kind === 'warmup-row') {
+      const count = Math.max(1, spec.size);
+      const gap = 8;
+      const size = Math.max(48, Math.min(84, Math.floor((width - 24 - gap * (count - 1)) / count)));
+      const row = placeRow(
+        Array.from({ length: count }, () => ({ w: size, h: size })),
+        width,
+        boardTop,
+        gap
+      );
+      row.forEach((box, col) => seats.push({ row: 0, col, ...box }));
+      boardBottom = boardTop + size;
+    } else {
+      const gap = 8;
+      const size = Math.max(48, Math.min(84, Math.floor((Math.min(width - 48, width * 0.7) - gap) / 2)));
+      const originX = (width - (size * 2 + gap)) / 2;
+      for (let index = 0; index < 4; index += 1) {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        seats.push({
+          row: 0,
+          col: index,
+          x: originX + col * (size + gap),
+          y: boardTop + row * (size + gap),
+          w: size,
+          h: size,
+        });
+      }
+      boardBottom = boardTop + size * 2 + gap;
+    }
+    const cols = digits.length;
+    const gap = 8;
+    const face = faceFor(width - PAD * 2, cols, gap);
+    const metrics = trayMetrics(digits.length, cols, gap, face);
+    const trayTop = boardBottom + 8;
+    const tray = placeTray(digits, metrics, (width - metrics.blockW) / 2, trayTop);
+    const height = Math.ceil(trayTop + metrics.blockH + PAD);
+    return { seats, tray, trayTop, height, beside: false };
+  }
+
+  const cols = trayColumns(width, digits.length, beside);
+  const gap = trayGapFor(beside ? 220 : width, digits.length, cols);
+  const build = (cell: number, face: number) => {
+    const metrics = trayMetrics(digits.length, cols, gap, face);
+    if (beside) {
+      const trayW = metrics.blockW;
+      const boardWidth = Math.max(80, width - PAD * 2 - trayW - 12);
+      const fitted = Math.min(cell, preferredCell(boardWidth, spec));
+      const { seats, boardHeight } = seatsForGrid(spec, PAD, boardWidth, boardTop, fitted);
+      const blockH = Math.max(boardHeight, metrics.blockH);
+      const trayY = boardTop + Math.max(0, (boardHeight - metrics.blockH) / 2);
+      const tray = placeTray(digits, metrics, PAD + boardWidth + 12, trayY);
+      const height = Math.ceil(boardTop + blockH + PAD);
+      return { seats, tray, trayTop: trayY, height, beside: true, face, cell: fitted };
+    }
+    const { seats, boardHeight } = seatsForGrid(spec, PAD, width - PAD * 2, boardTop, cell);
+    const trayTop = boardTop + boardHeight + 8;
+    const tray = placeTray(digits, metrics, (width - metrics.blockW) / 2, trayTop);
+    const height = Math.ceil(trayTop + metrics.blockH + PAD);
+    return { seats, tray, trayTop, height, beside: false, face, cell };
+  };
+
+  const traySpan = beside ? cols * 64 + gap * (cols - 1) : width - PAD * 2;
+  let face = faceFor(traySpan, cols, gap);
+  const boardWidth = beside ? Math.max(80, width - PAD * 2 - (cols * face + gap * (cols - 1)) - 12) : width - 16;
+  let cell = clamp(preferredCell(boardWidth, spec), 16, 84);
+  let layout = build(cell, face);
+  const limit = options.maxHeight;
+  while (limit != null && layout.height > limit && (cell > 18 || face > TAP)) {
+    if (cell > 18) cell -= 1;
+    else face -= 1;
+    layout = build(cell, face);
+  }
+  return {
+    seats: layout.seats,
+    tray: layout.tray,
+    trayTop: layout.trayTop,
+    height: layout.height,
+    beside: layout.beside,
+  };
+};
+
+// 舞台顶已经在视口里时，托盘必须整段落在屏幕里。格子不能为了多留一句而缩得太小。
+export const viewportBudget = (top: number, viewport: number) => {
+  if (top < 0 || top >= viewport) return undefined;
+  return Math.max(260, Math.floor(viewport - top - 16));
 };
