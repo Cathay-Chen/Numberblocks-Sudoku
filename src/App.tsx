@@ -10,7 +10,7 @@ import { SudokuBoard } from './components/SudokuBoard';
 import { TipBanner } from './components/TipBanner';
 import { WarmupPlay } from './components/WarmupPlay';
 import { WinOverlay } from './components/WinOverlay';
-import { childNextLine, lessonParentLines, pathIsClear, sixGateLines, sixGateVisible } from './kid-adventure/lessons';
+import { childNextLine, parentBoards, pathIsClear } from './kid-adventure/lessons';
 import { useSudokuGame } from './hooks/useSudokuGame';
 import { GAME_ACTIONS } from './game/actions';
 import { ReplaceDialog, focusSameControl } from './components/ReplaceDialog';
@@ -222,17 +222,28 @@ export default function App() {
                 </button>
               </div>
               <div className="parent-sheet-body">
-                <div className="space-y-1 text-sm font-bold leading-6 text-slate-800">
-                  <p className="parent-next">{childNextLine(pathIsClear(state.kidLevelStars), state.learning)}</p>
-                  <p>学习记录不记时间，也不按年龄。</p>
-                  <p>原来的六关：{state.kidLevelStars.filter((stars) => stars > 0).length} 关有星星。</p>
-                  {lessonParentLines(state.learning).map((line) => (
-                    <p key={line}>{line}</p>
-                  ))}
-                  {pathIsClear(state.kidLevelStars) && sixGateVisible(state.learning)
-                    ? sixGateLines(state.learning).map((line) => <p key={line}>{line}</p>)
-                    : null}
-                </div>
+                <p className="parent-next">{childNextLine(pathIsClear(state.kidLevelStars), state.learning)}</p>
+                <p className="parent-quiet">不记时间，也不按年龄。放错位置不挡下一步。</p>
+                <p className="parent-quiet">原来的六关：{state.kidLevelStars.filter((stars) => stars > 0).length} 关有星星。</p>
+                {parentBoards(state.learning).map((board) => (
+                  <section key={board.title} className="parent-board" aria-label={board.title}>
+                    <h3>{board.title}</h3>
+                    <div className="parent-chips">
+                      {board.items.map((item) => (
+                        <div key={item.id} className="parent-chip" data-status={item.status}>
+                          <span
+                            className="parent-mark"
+                            aria-label={item.status === 'own' ? '自己做完' : item.status === 'hint' ? '用了提示' : '还没做'}
+                          >
+                            {item.status === 'todo' ? null : <ToolIcon name={item.status === 'own' ? 'check' : 'hint'} />}
+                          </span>
+                          <span className="parent-chip-name">{item.label}</span>
+                          <small>放错位置 {item.mistakes} 次</small>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                ))}
                 <button type="button" className="parent-row" onClick={openClassic}>
                   经典数独
                   <span>9×9，给大人。孩子的格子留在这里。</span>

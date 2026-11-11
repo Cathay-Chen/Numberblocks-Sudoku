@@ -489,6 +489,18 @@
     box-shadow: 0 8px 0 #d5e4a4;
   }
 
+  @media (max-width: 420px) {
+    .kid-top,
+    .kid-main {
+      width: calc(100% - 8px);
+    }
+
+    .kid-card {
+      padding: 12px 6px;
+      border-radius: 22px;
+    }
+  }
+
   .kid-task {
     margin: 0;
     text-align: center;
@@ -582,40 +594,69 @@
   }
 
   .kid-celebrate {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 10px;
+    gap: 8px 10px;
+    overflow: hidden;
     border-radius: 20px;
     background: #ecfdf5;
     padding: 10px 12px;
   }
 
-  .kid-celebrate > div {
-    flex: 1;
-    min-width: 0;
+  .kid-celebrate-face {
+    width: 56px;
+    height: 56px;
+    overflow: hidden;
+    animation: kid-celebrate-pop 0.7s ease-out both;
   }
 
-  .kid-celebrate-face {
-    width: 64px;
-    height: 64px;
-    flex: none;
-    animation: kid-celebrate-pop 0.7s ease-out both;
+  .kid-celebrate-face .number-block,
+  .kid-celebrate-face img {
+    width: 100%;
+    height: 100%;
   }
 
   .kid-celebrate-copy {
     margin: 0;
     color: #065f46;
-    font-size: 1.25rem;
+    font-size: clamp(1rem, 4.6vw, 1.35rem);
     font-weight: 800;
-    line-height: 1.3;
+    line-height: 1.2;
+    white-space: nowrap;
   }
 
   .kid-celebrate-sub {
+    display: none;
     margin: 4px 0 0;
     color: #047857;
     font-size: 0.95rem;
     font-weight: 800;
-    line-height: 1.35;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 767px) {
+    .kid-celebrate {
+      grid-template-columns: minmax(0, 1fr) auto;
+      justify-items: center;
+    }
+
+    .kid-celebrate-face {
+      grid-column: 1 / -1;
+    }
+
+    .kid-celebrate-text {
+      justify-self: stretch;
+      min-width: 0;
+      text-align: center;
+    }
+  }
+
+  @media (min-width: 768px) {
+    .kid-celebrate-sub {
+      display: block;
+    }
   }
 
   .kid-done-tools {
@@ -651,11 +692,46 @@
 
   .kid-progress-group {
     display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 8px;
+    align-items: center;
+    gap: 6px;
     border-radius: 18px;
-    padding: 6px;
+    padding: 6px 8px 6px 6px;
+  }
+
+  .kid-progress-name {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 2.4rem;
+    color: #0f172a;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+
+  .kid-progress-name .tool-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .kid-progress-dots {
+    display: flex;
+    gap: 6px;
+  }
+
+  .kid-progress .kid-level {
+    height: 52px;
+  }
+
+  .kid-progress .kid-level .tool-icon {
+    position: static;
+    width: 16px;
+    height: 16px;
+    color: #047857;
+  }
+
+  .kid-level[data-done='1'] {
+    border-color: #047857;
+    color: #047857;
   }
 
   .kid-progress-group[data-group='teach'] {
@@ -1003,6 +1079,84 @@
     padding: 12px 16px 16px;
   }
 
+  .parent-sheet .parent-next {
+    border-radius: 12px;
+    background: #e0f2fe;
+    padding: 10px 12px;
+  }
+
+  .parent-quiet {
+    margin: 0;
+    color: #334155;
+    font-size: 0.85rem;
+    font-weight: 700;
+  }
+
+  .parent-board h3 {
+    margin: 4px 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+  }
+
+  .parent-chips {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+
+  .parent-chip {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    column-gap: 6px;
+    align-items: center;
+    min-height: 52px;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    font-weight: 800;
+  }
+
+  .parent-chip[data-status='own'] {
+    background: #ecfdf5;
+  }
+
+  .parent-chip[data-status='hint'] {
+    background: #fff7ed;
+  }
+
+  .parent-mark {
+    grid-row: 1 / span 2;
+    display: grid;
+    width: 28px;
+    height: 28px;
+    place-items: center;
+    border-radius: 999px;
+    border: 2px solid #cbd5e1;
+    background: #fff;
+  }
+
+  .parent-chip[data-status='own'] .parent-mark {
+    border-color: #047857;
+    color: #047857;
+  }
+
+  .parent-chip[data-status='hint'] .parent-mark {
+    border-color: #c2410c;
+    color: #c2410c;
+  }
+
+  .parent-mark .tool-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .parent-chip small {
+    color: #475569;
+    font-size: 0.7rem;
+    font-weight: 700;
+  }
+
   .parent-close {
     display: inline-flex;
     width: 48px;
@@ -1163,10 +1317,10 @@
 
   @keyframes kid-celebrate-pop {
     0% {
-      transform: translateY(12px) scale(0.86);
+      transform: scale(0.9);
     }
-    45% {
-      transform: translateY(-8px) scale(1.08);
+    55% {
+      transform: scale(1.04);
     }
     100% {
       transform: none;

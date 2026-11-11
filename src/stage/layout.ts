@@ -52,15 +52,14 @@ const placeRow = (boxes: { w: number; h: number }[], width: number, y: number, g
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-// 六个朋友在够宽时排成一行。放不下 44px 的点击区就回到两行三列。
-const trayColumns = (width: number, count: number, beside: boolean) => {
-  if (beside) return count > 4 ? 2 : count > 1 ? 2 : 1;
-  if (count <= 4) return count;
-  const inner = width - PAD * 2;
-  for (const gap of [8, 6, 4]) {
-    if (count * TAP + gap * (count - 1) <= inner) return count;
+// 窄屏六个朋友排成一行，每格大约 46px。放不下 44px 才回到两行三列。
+const tightSixRow = (width: number, count: number): { gap: number; face: number } | null => {
+  const inner = width - 8;
+  for (const gap of [4, 3, 2]) {
+    const raw = Math.floor((inner - gap * (count - 1)) / count);
+    if (raw >= TAP) return { gap, face: Math.min(raw, 52) };
   }
-  return 3;
+  return null;
 };
 
 const trayGapFor = (width: number, count: number, cols: number) => {
@@ -218,9 +217,28 @@ export const layoutPlayfield = (width: number, spec: LayoutSpec, options: Layout
     return { seats, tray, trayTop, height, beside: false };
   }
 
-  const cols = trayColumns(width, digits.length, beside);
-  const gap = trayGapFor(beside ? 220 : width, digits.length, cols);
+  const sixBeside = beside && digits.length >= 6;
+  const tight = !beside ? tightSixRow(width, digits.length) : null;
+  const cols = sixBeside ? 1 : beside ? (digits.length > 4 ? 2 : digits.length) : tight ? digits.length : digits.length > 4 ? 3 : digits.length;
+  const gap = tight ? tight.gap : trayGapFor(beside ? 220 : width, digits.length, cols);
   const build = (cell: number, face: number) => {
+    if (sixBeside) {
+      const trayW = 76;
+      const boardWidth = Math.max(120, width - PAD * 2 - trayW - 12);
+      const fitted = Math.min(cell, clamp(preferredCell(boardWidth, spec), 16, 84));
+      const { seats, boardHeight } = seatsForGrid(spec, PAD, boardWidth, boardTop, fitted);
+      const rows = digits.length;
+      let sized = clamp(Math.floor((boardHeight - gap * (rows - 1)) / rows) - LABEL_H, TAP, 72);
+      let metrics = trayMetrics(digits.length, 1, gap, sized);
+      while (metrics.blockH > boardHeight + 2 && sized > TAP) {
+        sized -= 1;
+        metrics = trayMetrics(digits.length, 1, gap, sized);
+      }
+      const trayY = boardTop + Math.max(0, (boardHeight - metrics.blockH) / 2);
+      const tray = placeTray(digits, metrics, PAD + boardWidth + 12, trayY);
+      const height = Math.ceil(boardTop + Math.max(boardHeight, metrics.blockH) + PAD);
+      return { seats, tray, trayTop: trayY, height, beside: true, face: sized, cell: fitted };
+    }
     const metrics = trayMetrics(digits.length, cols, gap, face);
     if (beside) {
       const trayW = metrics.blockW;
@@ -240,9 +258,11 @@ export const layoutPlayfield = (width: number, spec: LayoutSpec, options: Layout
     return { seats, tray, trayTop, height, beside: false, face, cell };
   };
 
-  const traySpan = beside ? cols * 64 + gap * (cols - 1) : width - PAD * 2;
-  let face = faceFor(traySpan, cols, gap);
-  const boardWidth = beside ? Math.max(80, width - PAD * 2 - (cols * face + gap * (cols - 1)) - 12) : width - 16;
+  const traySpan = beside ? cols * 64 + gap * Math.max(0, cols - 1) : width - (tight ? 8 : PAD * 2);
+  let face = tight ? tight.face : faceFor(traySpan, cols, gap);
+  const boardWidth = beside
+    ? Math.max(80, width - PAD * 2 - (sixBeside ? 76 : cols * face + gap * Math.max(0, cols - 1)) - 12)
+    : width - 16;
   let cell = clamp(preferredCell(boardWidth, spec), 16, 84);
   let layout = build(cell, face);
   const limit = options.maxHeight;
@@ -260,8 +280,8 @@ export const layoutPlayfield = (width: number, spec: LayoutSpec, options: Layout
   };
 };
 
-// 舞台顶已经在视口里时，托盘必须整段落在屏幕里。格子不能为了多留一句而缩得太小。
+// 舞台顶已经在视口里时，托盘和下面那句反馈都要留在这一屏里。
 export const viewportBudget = (top: number, viewport: number) => {
   if (top < 0 || top >= viewport) return undefined;
-  return Math.max(260, Math.floor(viewport - top - 16));
+  return Math.max(280, Math.floor(viewport - top - 56));
 };

@@ -356,7 +356,7 @@ export function KidAdventureBoard({
             <div className="kid-celebrate-face" aria-hidden="true">
               <NumberBlock value={geometry.digits[0] ?? 1} size="picker" imageAlt="" showScreenReaderLabel={false} />
             </div>
-            <div>
+            <div className="kid-celebrate-text">
               <p className="kid-celebrate-copy">{celebrate}</p>
               {soloLine ? <p className="kid-celebrate-sub">{clearedText(geometry.size)}</p> : null}
             </div>
@@ -494,6 +494,11 @@ export function KidAdventureBoard({
         <div className="kid-progress" aria-label="六个朋友的进度">
           {(['teach', 'review'] as const).map((group) => (
             <div key={group} className="kid-progress-group" data-group={group} aria-label={group === 'teach' ? '学小宫' : '再练'}>
+              <span className="kid-progress-name">
+                <ToolIcon name={group === 'teach' ? 'demo' : 'redo'} />
+                {group === 'teach' ? '学' : '练'}
+              </span>
+              <div className="kid-progress-dots">
               {track
                 .map((step, index) => ({ step, index }))
                 .filter(({ step }) => step.group === group)
@@ -518,6 +523,7 @@ export function KidAdventureBoard({
                     </button>
                   );
                 })}
+              </div>
             </div>
           ))}
         </div>

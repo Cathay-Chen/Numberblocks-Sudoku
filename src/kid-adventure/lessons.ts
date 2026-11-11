@@ -451,6 +451,48 @@ export const nextLessonStep = (id: string): { id: string; label: string } => {
   return { id: next, label: '再练一题' };
 };
 
+export type ParentChip = {
+  id: string;
+  label: string;
+  status: 'own' | 'hint' | 'todo';
+  mistakes: number;
+};
+
+const PARENT_SHORT: Record<string, string> = {
+  新方法示范: '示范',
+  自己练: '自己练',
+  '复习：行': '行',
+  '复习：列': '列',
+  '复习：座位': '座位',
+  '复习：两种方法': '两种',
+  '6×6 小宫': '小宫',
+  '6×6 看行': '看行',
+  '6×6 自己练': '自己练',
+  '6×6 两个座位': '两个座位',
+  '6×6 复习空位': '空位',
+  '6×6 复习座位': '座位',
+  '6×6 复习两种': '两种',
+};
+
+const parentChip = (lesson: SeatLesson, record: LearningRecord | null): ParentChip => {
+  const mark = markOf(record, lesson.id);
+  const label = PARENT_SHORT[lesson.parentLabel] ?? lesson.parentLabel;
+  if (!mark?.done) return { id: lesson.id, label, status: 'todo', mistakes: mark?.mistakes ?? 0 };
+  return {
+    id: lesson.id,
+    label,
+    status: isIndependent(mark) ? 'own' : 'hint',
+    mistakes: mark.mistakes,
+  };
+};
+
+export const parentBoards = (record: LearningRecord | null): { title: string; items: ParentChip[] }[] => {
+  const showSix = sixReady(record) || SIX_LESSONS.some((lesson) => markOf(record, lesson.id));
+  const boards = [{ title: '4×4', items: SEAT_LESSONS.map((lesson) => parentChip(lesson, record)) }];
+  if (showSix) boards.push({ title: '6×6', items: SIX_LESSONS.map((lesson) => parentChip(lesson, record)) });
+  return boards;
+};
+
 export const lessonParentLines = (record: LearningRecord | null): string[] => {
   const showSix = sixReady(record) || SIX_LESSONS.some((lesson) => markOf(record, lesson.id));
   const lessons = showSix ? ALL_LESSONS : SEAT_LESSONS;

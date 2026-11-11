@@ -71,6 +71,12 @@ describe('playfield layout', () => {
 
   it('puts six digits on one row when they fit, and beside the board when the stage is wide', () => {
     const spec = { kind: 'grid' as const, size: 6, boxRows: 2, boxCols: 3, digits: [1, 2, 3, 4, 5, 6] };
+    const phone = layoutPlayfield(300, spec, { maxHeight: 460 });
+    expect(new Set(phone.tray.map((item) => item.y)).size).toBe(1);
+    expect(phone.tray[0].w).toBeGreaterThanOrEqual(44);
+    expect(phone.tray[0].w).toBeLessThanOrEqual(52);
+    const cell = Math.min(...phone.seats.map((seat) => seat.w));
+    expect(cell).toBeGreaterThanOrEqual(36);
     const row = layoutPlayfield(342, spec);
     expect(new Set(row.tray.map((item) => item.y)).size).toBe(1);
     const wide = layoutPlayfield(680, spec);
@@ -78,5 +84,13 @@ describe('playfield layout', () => {
     const boardRight = Math.max(...wide.seats.map((seat) => seat.x + seat.w));
     const trayLeft = Math.min(...wide.tray.map((item) => item.x));
     expect(trayLeft).toBeGreaterThan(boardRight);
+    const boardTop = Math.min(...wide.seats.map((seat) => seat.y));
+    const boardBottom = Math.max(...wide.seats.map((seat) => seat.y + seat.h));
+    const trayTop = Math.min(...wide.tray.map((item) => item.y));
+    const trayBottom = Math.max(...wide.tray.map((item) => item.y + item.h));
+    const boardMid = (boardTop + boardBottom) / 2;
+    const trayMid = (trayTop + trayBottom) / 2;
+    expect(Math.abs(boardMid - trayMid)).toBeLessThan(20);
+    expect(trayBottom - trayTop).toBeGreaterThan((boardBottom - boardTop) * 0.7);
   });
 });
